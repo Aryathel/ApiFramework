@@ -42,7 +42,7 @@ class SyncClient(metaclass=ClientInit):
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
-    _params: Optional[Parameters] = None
+    _parameters: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
     _base: Optional[URL] = MISSING
     _session: SessionT
@@ -58,6 +58,8 @@ class SyncClient(metaclass=ClientInit):
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING
     ) -> None:
+        print(parameters)
+
         if not is_sync:
             raise SyncClientError("The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`.")
 
@@ -77,7 +79,8 @@ class SyncClient(metaclass=ClientInit):
         if cookies is not MISSING:
             self._cookies = self._flatten_format(cookies) or {}
         if parameters is not MISSING:
-            self._params = self._flatten_format(parameters) or {}
+            print(parameters)
+            self._parameters = self._flatten_format(parameters) or {}
 
         if bearer_token is not None:
             if isinstance(bearer_token, SecretStr):
@@ -114,7 +117,7 @@ class SyncClient(metaclass=ClientInit):
         if cookies is not MISSING:
             cls._cookies = cls._flatten_format(cookies) or {}
         if parameters is not MISSING:
-            cls._params = cls._flatten_format(parameters) or {}
+            cls._parameters = cls._flatten_format(parameters) or {}
         cls.error_responses = error_responses
 
     # ---------- URI Options ----------
@@ -141,7 +144,7 @@ class SyncClient(metaclass=ClientInit):
 
     @property
     def parameters(self) -> Optional[Parameters]:
-        return self._params
+        return self._parameters
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:
@@ -164,7 +167,7 @@ class SyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
@@ -172,7 +175,7 @@ class SyncClient(metaclass=ClientInit):
         path = self.uri + path if path else self.uri
         headers = self._flatten_format(headers)
         cookies = self._flatten_format(cookies)
-        params = self._flatten_format(params)
+        parameters = self._flatten_format(parameters)
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
         with self._session.request(
@@ -180,7 +183,7 @@ class SyncClient(metaclass=ClientInit):
                 path,
                 headers=headers,
                 cookies=cookies,
-                params=params,
+                params=parameters,
                 json=body,
                 data=data,
                 timeout=timeout
@@ -217,7 +220,7 @@ class SyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
@@ -226,7 +229,7 @@ class SyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             data={'file': open(file, 'rb')},
             response_format=response_format,
             timeout=timeout,
@@ -241,7 +244,7 @@ class SyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -250,7 +253,7 @@ class SyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             data=chunk_file_reader(file),
             response_format=response_format,
             timeout=timeout,
@@ -264,7 +267,7 @@ class SyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -274,7 +277,7 @@ class SyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -289,7 +292,7 @@ class SyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -301,7 +304,7 @@ class SyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -316,7 +319,7 @@ class SyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -328,7 +331,7 @@ class SyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -343,7 +346,7 @@ class SyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -355,7 +358,7 @@ class SyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -370,7 +373,7 @@ class SyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -382,7 +385,7 @@ class SyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,

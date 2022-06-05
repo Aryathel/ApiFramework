@@ -11,6 +11,7 @@ from .utils import chunk_file_reader, merge_params
 
 is_async: bool
 try:
+    import asyncio
     from aiohttp import ClientSession, ClientTimeout
 
     is_async = True
@@ -41,7 +42,7 @@ class AsyncClient(metaclass=ClientInit):
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
-    _params: Optional[Parameters] = None
+    _parameters: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
@@ -76,7 +77,7 @@ class AsyncClient(metaclass=ClientInit):
         if cookies is not MISSING:
             self._cookies = self._flatten_format(cookies) or {}
         if parameters is not MISSING:
-            self._params = self._flatten_format(parameters) or {}
+            self._parameters = self._flatten_format(parameters) or {}
 
         if bearer_token is not None:
             if isinstance(bearer_token, SecretStr):
@@ -114,7 +115,7 @@ class AsyncClient(metaclass=ClientInit):
         if cookies is not MISSING:
             cls._cookies = cls._flatten_format(cookies) or {}
         if parameters is not MISSING:
-            cls._params = cls._flatten_format(parameters) or {}
+            cls._parameters = cls._flatten_format(parameters) or {}
         cls.error_responses = error_responses
 
     # ---------- URI Options ----------
@@ -142,7 +143,7 @@ class AsyncClient(metaclass=ClientInit):
 
     @property
     def parameters(self) -> Optional[Parameters]:
-        return self._params
+        return self._parameters
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:
@@ -165,7 +166,7 @@ class AsyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
@@ -173,7 +174,7 @@ class AsyncClient(metaclass=ClientInit):
         path = self.uri_rel + path if self.uri_rel else path
         headers = self._flatten_format(headers)
         cookies = self._flatten_format(cookies)
-        params = merge_params(self.parameters, self._flatten_format(params))
+        parameters = merge_params(self.parameters, self._flatten_format(parameters))
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
 
@@ -182,7 +183,7 @@ class AsyncClient(metaclass=ClientInit):
                 path,
                 headers=headers,
                 cookies=cookies,
-                params=params,
+                params=parameters,
                 json=body,
                 data=data,
                 timeout=ClientTimeout(total=timeout)
@@ -221,7 +222,7 @@ class AsyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
@@ -230,7 +231,7 @@ class AsyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             data={'file': open(file, 'rb')},
             response_format=response_format,
             timeout=timeout,
@@ -245,7 +246,7 @@ class AsyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -254,7 +255,7 @@ class AsyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             data=chunk_file_reader(file),
             response_format=response_format,
             timeout=timeout,
@@ -268,7 +269,7 @@ class AsyncClient(metaclass=ClientInit):
             *,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -278,7 +279,7 @@ class AsyncClient(metaclass=ClientInit):
             path,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -320,7 +321,7 @@ class AsyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -332,7 +333,7 @@ class AsyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -347,7 +348,7 @@ class AsyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -359,7 +360,7 @@ class AsyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -374,7 +375,7 @@ class AsyncClient(metaclass=ClientInit):
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,  # Default in aiohttp
             error_responses: ErrorResponses = None
@@ -386,7 +387,7 @@ class AsyncClient(metaclass=ClientInit):
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
