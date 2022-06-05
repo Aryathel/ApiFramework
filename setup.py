@@ -12,16 +12,18 @@ requirements = [
 
 extras_require = {
     "sync": ["requests>=2.27.1"],
-    "async": ["requests>=3.8.1"],
+    "async": ["aiohttp>=3.8.1"],
 }
 
 packages = [
-    "arya_api_framework"
+    "arya_api_framework",
+    "arya_api_framework.async_framework",
+    "arya_api_framework.sync_framework",
 ]
 
 setup(
     name="arya-api-framework",
-    version="0.0.1",
+    version="0.0.2",
     description="A simple API framework used in many other API clients I create.",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -42,6 +42,7 @@ class SyncClient(metaclass=ClientInit):
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
+    _params: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
     _base: Optional[URL] = MISSING
     _session: SessionT
@@ -53,6 +54,7 @@ class SyncClient(metaclass=ClientInit):
             *,
             headers: Headers = MISSING,
             cookies: Cookies = MISSING,
+            parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING
     ) -> None:
@@ -74,6 +76,8 @@ class SyncClient(metaclass=ClientInit):
             self._headers = self._flatten_format(headers)
         if cookies is not MISSING:
             self._cookies = self._flatten_format(cookies) or {}
+        if parameters is not MISSING:
+            self._params = self._flatten_format(parameters) or {}
 
         if bearer_token is not None:
             if isinstance(bearer_token, SecretStr):
@@ -89,6 +93,7 @@ class SyncClient(metaclass=ClientInit):
         self._session = Session()
         self._session.headers = self.headers
         self._session.cookies = cookiejar_from_dict(self.cookies or {})
+        self._session.params = self.parameters
 
     def __post_init__(self, *args, **kwargs) -> None:
         pass
@@ -98,6 +103,7 @@ class SyncClient(metaclass=ClientInit):
             uri: str = MISSING,
             headers: Headers = MISSING,
             cookies: Cookies = MISSING,
+            parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
     ) -> None:
         if not isinstance(uri, str):
@@ -107,6 +113,8 @@ class SyncClient(metaclass=ClientInit):
             cls._headers = cls._flatten_format(headers)
         if cookies is not MISSING:
             cls._cookies = cls._flatten_format(cookies) or {}
+        if parameters is not MISSING:
+            cls._params = cls._flatten_format(parameters) or {}
         cls.error_responses = error_responses
 
     # ---------- URI Options ----------
@@ -130,6 +138,10 @@ class SyncClient(metaclass=ClientInit):
     @property
     def cookies(self) -> Optional[Cookies]:
         return self._cookies
+
+    @property
+    def parameters(self) -> Optional[Parameters]:
+        return self._params
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:

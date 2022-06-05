@@ -1,5 +1,4 @@
 from typing import Any
-from inspect import getfullargspec
 
 from .errors import MISSING
 

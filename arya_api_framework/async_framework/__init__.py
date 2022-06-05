@@ -7,7 +7,7 @@ from yarl import URL
 
 from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, AsyncClientError
 from ..framework import ClientInit
-from .utils import chunk_file_reader
+from .utils import chunk_file_reader, merge_params
 
 is_async: bool
 try:
@@ -41,6 +41,7 @@ class AsyncClient(metaclass=ClientInit):
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
+    _params: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
@@ -52,6 +53,7 @@ class AsyncClient(metaclass=ClientInit):
             *,
             headers: Headers = MISSING,
             cookies: Cookies = MISSING,
+            parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING
     ) -> None:
@@ -73,6 +75,8 @@ class AsyncClient(metaclass=ClientInit):
             self._headers = self._flatten_format(headers)
         if cookies is not MISSING:
             self._cookies = self._flatten_format(cookies) or {}
+        if parameters is not MISSING:
+            self._params = self._flatten_format(parameters) or {}
 
         if bearer_token is not None:
             if isinstance(bearer_token, SecretStr):
@@ -99,6 +103,7 @@ class AsyncClient(metaclass=ClientInit):
             uri: str = MISSING,
             headers: Headers = MISSING,
             cookies: Cookies = MISSING,
+            parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
     ) -> None:
         if not isinstance(uri, str):
@@ -108,6 +113,8 @@ class AsyncClient(metaclass=ClientInit):
             cls._headers = cls._flatten_format(headers)
         if cookies is not MISSING:
             cls._cookies = cls._flatten_format(cookies) or {}
+        if parameters is not MISSING:
+            cls._params = cls._flatten_format(parameters) or {}
         cls.error_responses = error_responses
 
     # ---------- URI Options ----------
@@ -132,6 +139,10 @@ class AsyncClient(metaclass=ClientInit):
     @property
     def cookies(self) -> Optional[Cookies]:
         return self._cookies
+
+    @property
+    def parameters(self) -> Optional[Parameters]:
+        return self._params
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:
@@ -162,7 +173,7 @@ class AsyncClient(metaclass=ClientInit):
         path = self.uri_rel + path if self.uri_rel else path
         headers = self._flatten_format(headers)
         cookies = self._flatten_format(cookies)
-        params = self._flatten_format(params)
+        params = merge_params(self.parameters, self._flatten_format(params))
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
 
