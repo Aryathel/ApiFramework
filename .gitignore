@@ -2,4 +2,4 @@ Pipfile
 Pipfile.lock
 __pycache__/
 dist/
-*.egg_info/
+arya_api_framework.egg_info/
