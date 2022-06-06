@@ -89,7 +89,8 @@ class SyncClient(metaclass=ClientInit):
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
-        self._error_response_models = error_responses
+        if error_responses is not MISSING:
+            self.error_responses = error_responses
 
         self._session = Session()
         self._session.headers = self.headers
@@ -117,7 +118,8 @@ class SyncClient(metaclass=ClientInit):
             cls._cookies = cls._flatten_format(cookies) or {}
         if parameters is not MISSING:
             cls._parameters = cls._flatten_format(parameters) or {}
-        cls.error_responses = error_responses
+        if error_responses is not MISSING:
+            cls.error_responses = error_responses
 
     # ---------- URI Options ----------
     @property
