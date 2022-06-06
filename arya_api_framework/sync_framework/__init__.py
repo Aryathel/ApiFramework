@@ -58,8 +58,6 @@ class SyncClient(metaclass=ClientInit):
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING
     ) -> None:
-        print(parameters)
-
         if not is_sync:
             raise SyncClientError("The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`.")
 
@@ -109,9 +107,10 @@ class SyncClient(metaclass=ClientInit):
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
     ) -> None:
-        if not isinstance(uri, str):
-            raise ValueError("The uri should be a string.")
-        cls._base = URL(uri)
+        if uri is not MISSING:
+            if not isinstance(uri, str):
+                raise ValueError("The uri should be a string.")
+            cls._base = URL(uri)
         if headers is not MISSING:
             cls._headers = cls._flatten_format(headers)
         if cookies is not MISSING:
@@ -195,7 +194,9 @@ class SyncClient(metaclass=ClientInit):
                     raise ResponseParseError(raw_response=response.text)
 
                 if response_format is not None:
-                    return parse_obj_as(response_format, response_json)
+                    obj = parse_obj_as(response_format, response_json)
+                    obj.__request_base__ = response.request
+                    return obj
 
                 return response_json
 

@@ -88,7 +88,8 @@ class AsyncClient(metaclass=ClientInit):
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
-        self._error_response_models = error_responses
+        if error_responses is not MISSING:
+            self.error_responses = error_responses
 
         self._session = ClientSession(
             self.uri_root,
@@ -107,16 +108,18 @@ class AsyncClient(metaclass=ClientInit):
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
     ) -> None:
-        if not isinstance(uri, str):
-            raise ValueError("The uri should be a string.")
-        cls._base = URL(uri)
+        if uri is not MISSING:
+            if not isinstance(uri, str):
+                raise ValueError("The uri should be a string.")
+            cls._base = URL(uri)
         if headers is not MISSING:
             cls._headers = cls._flatten_format(headers)
         if cookies is not MISSING:
             cls._cookies = cls._flatten_format(cookies) or {}
         if parameters is not MISSING:
             cls._parameters = cls._flatten_format(parameters) or {}
-        cls.error_responses = error_responses
+        if error_responses is not MISSING:
+            cls.error_responses = error_responses
 
     # ---------- URI Options ----------
     @property
@@ -196,7 +199,9 @@ class AsyncClient(metaclass=ClientInit):
                     raise ResponseParseError(raw_response=response_text)
 
                 if response_format is not None:
-                    return parse_obj_as(response_format, response_json)
+                    obj = parse_obj_as(response_format, response_json)
+                    obj.__request_base__ = response
+                    return obj
 
                 return response_json
 
