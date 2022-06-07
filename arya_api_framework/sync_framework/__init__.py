@@ -217,7 +217,7 @@ class SyncClient(metaclass=ClientInit):
                 timeout=timeout
         ) as response:
             self._last_request_at = datetime.utcnow()
-            _log.info(f"{method} {path} ({response.status_code})")
+            _log.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
 
             if response.ok:
                 try:
