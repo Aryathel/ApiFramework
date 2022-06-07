@@ -53,8 +53,8 @@ class AsyncClient(metaclass=ClientInit):
     # ---------- Initialization Methods ----------
     def __init__(
             self,
+            /,
             uri: str = MISSING,
-            *,
             headers: Headers = MISSING,
             cookies: Cookies = MISSING,
             parameters: Parameters = MISSING,

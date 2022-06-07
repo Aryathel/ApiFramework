@@ -10,8 +10,6 @@ from .errors import MISSING
 class ClientInit(type):
     def __call__(cls, *args, **kwargs) -> Any:
         uri = kwargs.get('uri', MISSING)
-        if uri is MISSING and len(args) > 0:
-            uri = args[0]
         headers = kwargs.get('headers', MISSING)
         cookies = kwargs.get('cookies', MISSING)
         parameters = kwargs.get('parameters', MISSING)
