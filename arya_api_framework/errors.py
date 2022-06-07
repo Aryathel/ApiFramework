@@ -19,6 +19,10 @@ class MISSING(Exception):
         return False
 
 
+class ValidationError(Exception):
+    """Used when validating a variables type."""
+
+
 # ---------- Client Errors ----------
 class ClientError(Exception):
     pass

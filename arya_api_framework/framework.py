@@ -1,4 +1,8 @@
-from typing import Any
+import abc
+from typing import Any, Optional
+from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 from .errors import MISSING
 
@@ -19,3 +23,35 @@ class ClientInit(type):
         if hasattr(obj, '__post_init__'):
             obj.__post_init__(*args, **kwargs)
         return obj
+
+
+class Response(BaseModel, abc.ABC):
+    request_base_: Optional[str] = None
+    request_received_at_: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
+class PaginatedResponse(Response, abc.ABC):
+    @property
+    @abc.abstractmethod
+    def is_paginating(self) -> bool:
+        return False
+
+    @property
+    @abc.abstractmethod
+    def next(self) -> Optional[int]:
+        return None
+
+    @property
+    @abc.abstractmethod
+    def end(self) -> Optional[int]:
+        return None
+
+    @property
+    @abc.abstractmethod
+    def back(self) -> Optional[int]:
+        return None
+
+    @property
+    @abc.abstractmethod
+    def start(self) -> Optional[int]:
+        return None

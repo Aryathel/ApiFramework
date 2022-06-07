@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta, datetime
 from typing import Any, Optional, Type, TypeVar, Union, Dict, List
 from json import JSONDecodeError
 
@@ -6,7 +7,8 @@ from pydantic import BaseModel, parse_obj_as, SecretStr, validate_arguments
 from yarl import URL
 
 from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, AsyncClientError
-from ..framework import ClientInit
+from ..framework import ClientInit, Response
+from ..utils import validate_type
 from .utils import chunk_file_reader, merge_params
 
 is_async: bool
@@ -22,7 +24,7 @@ __all__ = {
     "AsyncClient"
 }
 
-_log: logging.Logger = logging.getLogger(__name__)
+_log: logging.Logger = logging.getLogger("arya_api_framework.Async")
 
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
@@ -34,8 +36,6 @@ ErrorResponses = Dict[int, Type[BaseModel]]
 
 ClientSessionT = TypeVar('ClientSessionT', bound='ClientSession')
 
-Response = TypeVar('Response')
-
 
 class AsyncClient(metaclass=ClientInit):
     """The basic Client implementation that all API clients inherit from."""
@@ -44,6 +44,9 @@ class AsyncClient(metaclass=ClientInit):
     _cookies: Optional[Cookies] = None
     _parameters: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
+    _rate_limit_interval: Optional[int] = 1
+    _rate_limit: Optional[int] = None
+    _last_request_at: Optional[datetime] = None
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
 
@@ -56,7 +59,9 @@ class AsyncClient(metaclass=ClientInit):
             cookies: Cookies = MISSING,
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
-            bearer_token: Union[str, SecretStr] = MISSING
+            bearer_token: Union[str, SecretStr] = MISSING,
+            rate_limit: int = MISSING,
+            rate_limit_interval: int = MISSING
     ) -> None:
         if not is_async:
             raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
@@ -91,6 +96,13 @@ class AsyncClient(metaclass=ClientInit):
         if error_responses is not MISSING:
             self.error_responses = error_responses
 
+        if rate_limit is not MISSING:
+            if validate_type(rate_limit, int):
+                self._rate_limit = rate_limit
+        if rate_limit_interval is not MISSING:
+            if validate_type(rate_limit_interval, int):
+                self._rate_limit_interval = rate_limit
+
         self._session = ClientSession(
             self.uri_root,
             headers=self.headers or {},
@@ -107,6 +119,8 @@ class AsyncClient(metaclass=ClientInit):
             cookies: Cookies = MISSING,
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
+            rate_limit: int = MISSING,
+            rate_limit_interval: int = MISSING
     ) -> None:
         if uri is not MISSING:
             if not isinstance(uri, str):
@@ -120,12 +134,17 @@ class AsyncClient(metaclass=ClientInit):
             cls._parameters = cls._flatten_format(parameters) or {}
         if error_responses is not MISSING:
             cls.error_responses = error_responses
+        if rate_limit is not MISSING:
+            if validate_type(rate_limit, int):
+                cls._rate_limit = rate_limit
+        if rate_limit_interval is not MISSING:
+            if validate_type(rate_limit_interval, int):
+                cls._rate_limit_interval = rate_limit
 
     # ---------- URI Options ----------
     @property
     def uri(self) -> Optional[URL]:
         return self._base if self._base is not MISSING else None
-
 
     @property
     def uri_root(self) -> Optional[str]:
@@ -147,6 +166,11 @@ class AsyncClient(metaclass=ClientInit):
     @property
     def parameters(self) -> Optional[Parameters]:
         return self._parameters
+
+    @property
+    def rate_limit(self) -> Optional[timedelta]:
+        if self._rate_limit:
+            return timedelta(seconds=self._rate_limit_interval/self._rate_limit)
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:
@@ -181,6 +205,8 @@ class AsyncClient(metaclass=ClientInit):
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
 
+        await self._apply_rate_limit()
+
         async with self._session.request(
                 method,
                 path,
@@ -191,6 +217,8 @@ class AsyncClient(metaclass=ClientInit):
                 data=data,
                 timeout=ClientTimeout(total=timeout)
         ) as response:
+            _log.info(f"{method} {path} ({response.status})")
+
             if response.ok:
                 try:
                     response_json = await response.json(content_type=None)
@@ -200,7 +228,7 @@ class AsyncClient(metaclass=ClientInit):
 
                 if response_format is not None:
                     obj = parse_obj_as(response_format, response_json)
-                    obj.__request_base__ = response
+                    obj.request_base_ = response.url
                     return obj
 
                 return response_json
@@ -406,3 +434,14 @@ class AsyncClient(metaclass=ClientInit):
     @validate_arguments()
     def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:
         return data.dict(exclude_unset=True) if isinstance(data, BaseModel) else data
+
+    async def _apply_rate_limit(self) -> None:
+        if self.rate_limit and self._last_request_at:
+            now = datetime.utcnow()
+            time_since = now - self._last_request_at
+            if time_since < self.rate_limit:
+                execute_at = self._last_request_at + self.rate_limit
+                wait_time = (execute_at - now).total_seconds()
+                self._last_request_at = execute_at
+                _log.info(f"Applying rate limit: Sleeping for {wait_time}s")
+                await asyncio.sleep(wait_time)
