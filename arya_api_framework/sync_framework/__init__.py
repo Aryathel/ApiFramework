@@ -79,11 +79,11 @@ class SyncClient(metaclass=ClientInit):
             )
 
         if headers is not MISSING:
-            self._headers = self._flatten_format(headers)
+            self.headers = headers
         if cookies is not MISSING:
-            self._cookies = self._flatten_format(cookies) or {}
+            self.cookies = cookies or {}
         if parameters is not MISSING:
-            self._parameters = self._flatten_format(parameters) or {}
+            self.parameters = parameters or {}
 
         if bearer_token is not None:
             if validate_type(bearer_token, SecretStr, err=False):
@@ -126,11 +126,11 @@ class SyncClient(metaclass=ClientInit):
             if validate_type(uri, str):
                 cls._base = URL(uri)
         if headers is not MISSING:
-            cls._headers = cls._flatten_format(headers)
+            cls.headers = headers
         if cookies is not MISSING:
-            cls._cookies = cls._flatten_format(cookies) or {}
+            cls.cookies = cookies or {}
         if parameters is not MISSING:
-            cls._parameters = cls._flatten_format(parameters) or {}
+            cls.parameters = parameters or {}
         if error_responses is not MISSING:
             cls.error_responses = error_responses
         if rate_limit is not MISSING:
@@ -158,13 +158,28 @@ class SyncClient(metaclass=ClientInit):
     def headers(self) -> Optional[Headers]:
         return self._headers
 
+    @headers.setter
+    def headers(self, headers: Headers) -> None:
+        self._headers = self._flatten_format(headers)
+        self._session.headers = self._headers
+
     @property
     def cookies(self) -> Optional[Cookies]:
         return self._cookies
 
+    @cookies.setter
+    def cookies(self, cookies: Cookies) -> None:
+        self._cookies = self._flatten_format(cookies)
+        self._session.cookies = self._cookies
+
     @property
     def parameters(self) -> Optional[Parameters]:
         return self._parameters
+
+    @parameters.setter
+    def parameters(self, params: Parameters) -> None:
+        self._parameters = self._flatten_format(params)
+        self._session.params = self._parameters
 
     @property
     def rate_limit(self) -> Optional[timedelta]:
