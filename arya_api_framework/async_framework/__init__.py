@@ -217,6 +217,7 @@ class AsyncClient(metaclass=ClientInit):
                 data=data,
                 timeout=ClientTimeout(total=timeout)
         ) as response:
+            self._last_request_at = datetime.utcnow()
             _log.info(f"{method} {path} ({response.status})")
 
             if response.ok:

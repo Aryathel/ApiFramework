@@ -216,6 +216,7 @@ class SyncClient(metaclass=ClientInit):
                 data=data,
                 timeout=timeout
         ) as response:
+            self._last_request_at = datetime.utcnow()
             _log.info(f"{method} {path} ({response.status_code})")
 
             if response.ok:
