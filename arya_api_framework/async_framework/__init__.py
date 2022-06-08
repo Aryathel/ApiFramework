@@ -48,7 +48,7 @@ class AsyncClient(metaclass=ClientInit):
     _error_responses: Optional[ErrorResponses] = None
     _rate_limit_interval: Optional[Union[int, float]] = 1
     _rate_limit: Optional[Union[int, float]] = None
-    _limiter: Optional[AsyncLimiter] = None
+    _limiter: Optional['AsyncLimiter'] = None
     _last_request_at: Optional[datetime] = None
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
