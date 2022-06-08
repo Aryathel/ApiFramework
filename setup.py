@@ -27,7 +27,7 @@ packages = [
 
 setup(
     name="arya-api-framework",
-    version="0.1.2",
+    version="0.1.4",
     description="A simple API framework used in many other API clients I create.",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -149,8 +149,8 @@ class AsyncClient(metaclass=ClientInit):
 
     # ---------- URI Options ----------
     @property
-    def uri(self) -> Optional[URL]:
-        return self._base if self._base is not MISSING else None
+    def uri(self) -> Optional[str]:
+        return str(self._base) if self._base is not MISSING else None
 
     @property
     def uri_root(self) -> Optional[str]:
@@ -251,7 +251,7 @@ class AsyncClient(metaclass=ClientInit):
 
                 if response_format is not None:
                     obj = parse_obj_as(response_format, response_json)
-                    obj.request_base_ = response.url
+                    obj.request_base_ = str(response.url)
                     return obj
 
                 return response_json

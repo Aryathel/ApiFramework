@@ -4,7 +4,10 @@ from functools import wraps
 import time
 import logging
 
-from ratelimit import RateLimitException
+try:
+    from ratelimit import RateLimitException
+except ImportError:
+    pass
 
 _log = logging.getLogger('arya_api_framework.Sync')
 
