@@ -16,6 +16,7 @@ is_async: bool
 try:
     import asyncio
     from aiohttp import ClientSession, ClientTimeout
+    from aiolimiter import AsyncLimiter
 
     is_async = True
 except ImportError:
@@ -45,8 +46,9 @@ class AsyncClient(metaclass=ClientInit):
     _cookies: Optional[Cookies] = None
     _parameters: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
-    _rate_limit_interval: Optional[int] = 1
-    _rate_limit: Optional[int] = None
+    _rate_limit_interval: Optional[Union[int, float]] = 1
+    _rate_limit: Optional[Union[int, float]] = None
+    _limiter: Optional[AsyncLimiter] = None
     _last_request_at: Optional[datetime] = None
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
@@ -61,8 +63,8 @@ class AsyncClient(metaclass=ClientInit):
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING,
-            rate_limit: int = MISSING,
-            rate_limit_interval: int = MISSING
+            rate_limit: Union[int, float] = MISSING,
+            rate_limit_interval: Union[int, float] = MISSING
     ) -> None:
         if not is_async:
             raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
@@ -78,13 +80,6 @@ class AsyncClient(metaclass=ClientInit):
                 "This can be done through init parameters, or subclass parameters."
             )
 
-        if headers is not MISSING:
-            self.headers = headers
-        if cookies is not MISSING:
-            self.cookies = cookies or {}
-        if parameters is not MISSING:
-            self.parameters = parameters or {}
-
         if bearer_token is not None:
             if isinstance(bearer_token, SecretStr):
                 bearer_token = bearer_token.get_secret_value()
@@ -94,15 +89,25 @@ class AsyncClient(metaclass=ClientInit):
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
+        if headers is not MISSING:
+            self._headers = headers or {}
+        if cookies is not MISSING:
+            self._cookies = cookies or {}
+        if parameters is not MISSING:
+            self._parameters = parameters or {}
+
         if error_responses is not MISSING:
-            self.error_responses = error_responses
+            self._error_responses = error_responses
 
         if rate_limit is not MISSING:
-            if validate_type(rate_limit, int):
+            if validate_type(rate_limit, [int, float]):
                 self._rate_limit = rate_limit
         if rate_limit_interval is not MISSING:
-            if validate_type(rate_limit_interval, int):
-                self._rate_limit_interval = rate_limit
+            if validate_type(rate_limit_interval, [int, float]):
+                self._rate_limit_interval = rate_limit_interval
+
+        if self._rate_limit:
+            self._limiter = AsyncLimiter(self._rate_limit, self._rate_limit_interval)
 
         self._session = ClientSession(
             self.uri_root,
@@ -120,27 +125,27 @@ class AsyncClient(metaclass=ClientInit):
             cookies: Cookies = MISSING,
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
-            rate_limit: int = MISSING,
-            rate_limit_interval: int = MISSING
+            rate_limit: Union[int, float] = MISSING,
+            rate_limit_interval: Union[int, float] = MISSING
     ) -> None:
         if uri is not MISSING:
             if not isinstance(uri, str):
                 raise ValueError("The uri should be a string.")
             cls._base = URL(uri)
         if headers is not MISSING:
-            cls.headers = headers
+            cls._headers = headers
         if cookies is not MISSING:
-            cls.cookies = cookies or {}
+            cls._cookies = cookies or {}
         if parameters is not MISSING:
-            cls.parameters = parameters or {}
+            cls._parameters = parameters or {}
         if error_responses is not MISSING:
-            cls.error_responses = error_responses
+            cls._error_responses = error_responses
         if rate_limit is not MISSING:
-            if validate_type(rate_limit, int):
+            if validate_type(rate_limit, [int, float]):
                 cls._rate_limit = rate_limit
         if rate_limit_interval is not MISSING:
-            if validate_type(rate_limit_interval, int):
-                cls._rate_limit_interval = rate_limit
+            if validate_type(rate_limit_interval, [int, float]):
+                cls._rate_limit_interval = rate_limit_interval
 
     # ---------- URI Options ----------
     @property
@@ -213,14 +218,17 @@ class AsyncClient(metaclass=ClientInit):
             timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        if self._limiter:
+            if not self._limiter.has_capacity():
+                _log.info("Waiting for rate limit")
+            await self._limiter.acquire()
+
         path = self.uri_rel + path if self.uri_rel else path
         headers = self._flatten_format(headers)
         cookies = self._flatten_format(cookies)
         parameters = merge_params(self.parameters, self._flatten_format(parameters))
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
-
-        await self._apply_rate_limit()
 
         async with self._session.request(
                 method,
@@ -232,7 +240,6 @@ class AsyncClient(metaclass=ClientInit):
                 data=data,
                 timeout=ClientTimeout(total=timeout)
         ) as response:
-            self._last_request_at = datetime.utcnow()
             _log.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
 
             if response.ok:
@@ -450,14 +457,3 @@ class AsyncClient(metaclass=ClientInit):
     @validate_arguments()
     def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:
         return data.dict(exclude_unset=True) if isinstance(data, BaseModel) else data
-
-    async def _apply_rate_limit(self) -> None:
-        if self.rate_limit and self._last_request_at:
-            now = datetime.utcnow()
-            time_since = now - self._last_request_at
-            if time_since < self.rate_limit:
-                execute_at = self._last_request_at + self.rate_limit
-                wait_time = (execute_at - now).total_seconds()
-                self._last_request_at = execute_at
-                _log.info(f"Applying rate limit: Sleeping for {wait_time}s")
-                await asyncio.sleep(wait_time)

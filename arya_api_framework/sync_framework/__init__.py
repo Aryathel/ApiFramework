@@ -7,7 +7,7 @@ import time
 from pydantic import BaseModel, parse_obj_as, SecretStr, validate_arguments
 from yarl import URL
 
-from .utils import chunk_file_reader
+from .utils import chunk_file_reader, sleep_and_retry
 from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, SyncClientError
 from ..framework import ClientInit, Response
 from ..utils import validate_type
@@ -16,6 +16,7 @@ is_sync: bool
 try:
     from requests import Session
     from requests.cookies import cookiejar_from_dict
+    from ratelimit import limits
 
     is_sync = True
 except ImportError:
@@ -45,8 +46,9 @@ class SyncClient(metaclass=ClientInit):
     _cookies: Optional[Cookies] = None
     _parameters: Optional[Parameters] = None
     _error_responses: Optional[ErrorResponses] = None
-    _rate_limit_interval: Optional[int] = 1
-    _rate_limit: Optional[int] = None
+    _rate_limit_interval: Optional[Union[int, float]] = 1
+    _rate_limit: Optional[Union[int, float]] = None
+    _rate_limited = False
     _last_request_at: Optional[datetime] = None
     _base: Optional[URL] = MISSING
     _session: SessionT
@@ -61,8 +63,8 @@ class SyncClient(metaclass=ClientInit):
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
             bearer_token: Union[str, SecretStr] = MISSING,
-            rate_limit: int = MISSING,
-            rate_limit_interval: int = MISSING
+            rate_limit: Union[int, float] = MISSING,
+            rate_limit_interval: Union[int, float] = MISSING,
     ) -> None:
         if not is_sync:
             raise SyncClientError(
@@ -78,12 +80,10 @@ class SyncClient(metaclass=ClientInit):
                 "This can be done through init parameters, or subclass parameters."
             )
 
-        if headers is not MISSING:
-            self.headers = headers
         if cookies is not MISSING:
-            self.cookies = cookies or {}
+            self._cookies = cookies or {}
         if parameters is not MISSING:
-            self.parameters = parameters or {}
+            self._parameters = parameters or {}
 
         if bearer_token is not None:
             if validate_type(bearer_token, SecretStr, err=False):
@@ -94,15 +94,25 @@ class SyncClient(metaclass=ClientInit):
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
+        if headers is not MISSING:
+            self._headers = headers or {}
+
         if error_responses is not MISSING:
             self.error_responses = error_responses
 
         if rate_limit is not MISSING:
-            if validate_type(rate_limit, int):
+            if validate_type(rate_limit, [int, float]):
                 self._rate_limit = rate_limit
         if rate_limit_interval is not MISSING:
-            if validate_type(rate_limit_interval, int):
-                self._rate_limit_interval = rate_limit
+            if validate_type(rate_limit_interval, [int, float]):
+                print("setting interval")
+                self._rate_limit_interval = rate_limit_interval
+
+        if self._rate_limit:
+            self.request = sleep_and_retry(
+                limits(calls=self._rate_limit, period=self._rate_limit_interval)(self.request)
+            )
+            self._rate_limited = True
 
         self._session = Session()
         self._session.headers = self.headers
@@ -119,26 +129,26 @@ class SyncClient(metaclass=ClientInit):
             cookies: Cookies = MISSING,
             parameters: Parameters = MISSING,
             error_responses: ErrorResponses = MISSING,
-            rate_limit: int = MISSING,
-            rate_limit_interval: int = MISSING
+            rate_limit: Union[int, float] = MISSING,
+            rate_limit_interval: Union[int, float] = MISSING
     ) -> None:
         if uri is not MISSING:
             if validate_type(uri, str):
                 cls._base = URL(uri)
         if headers is not MISSING:
-            cls.headers = headers
+            cls._headers = headers
         if cookies is not MISSING:
-            cls.cookies = cookies or {}
+            cls._cookies = cookies or {}
         if parameters is not MISSING:
-            cls.parameters = parameters or {}
+            cls._parameters = parameters or {}
         if error_responses is not MISSING:
-            cls.error_responses = error_responses
+            cls._error_responses = error_responses
         if rate_limit is not MISSING:
-            if validate_type(rate_limit, int):
+            if validate_type(rate_limit, [int, float]):
                 cls._rate_limit = rate_limit
         if rate_limit_interval is not MISSING:
-            if validate_type(rate_limit_interval, int):
-                cls._rate_limit_interval = rate_limit
+            if validate_type(rate_limit_interval, [int, float]):
+                cls._rate_limit_interval = rate_limit_interval
 
     # ---------- URI Options ----------
     @property
@@ -182,11 +192,6 @@ class SyncClient(metaclass=ClientInit):
         self._session.params = self._parameters
 
     @property
-    def rate_limit(self) -> Optional[timedelta]:
-        if self._rate_limit:
-            return timedelta(seconds=self._rate_limit_interval / self._rate_limit)
-
-    @property
     def error_responses(self) -> Optional[ErrorResponses]:
         return self._error_responses
 
@@ -219,8 +224,6 @@ class SyncClient(metaclass=ClientInit):
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
 
-        self._apply_rate_limit()
-
         with self._session.request(
                 method,
                 path,
@@ -231,7 +234,6 @@ class SyncClient(metaclass=ClientInit):
                 data=data,
                 timeout=timeout
         ) as response:
-            self._last_request_at = datetime.utcnow()
             _log.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
 
             if response.ok:
@@ -447,13 +449,3 @@ class SyncClient(metaclass=ClientInit):
     @validate_arguments()
     def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:
         return data.dict(exclude_unset=True) if isinstance(data, BaseModel) else data
-
-    def _apply_rate_limit(self) -> None:
-        if self.rate_limit and self._last_request_at:
-            now = datetime.utcnow()
-            time_since = now - self._last_request_at
-            if time_since < self.rate_limit:
-                execute_at = self._last_request_at + self.rate_limit
-                wait_time = (execute_at - now).total_seconds()
-                _log.info(f"Applying rate limit: Sleeping for {wait_time}s")
-                time.sleep(wait_time)

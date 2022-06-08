@@ -15,9 +15,14 @@ class ClientInit(type):
         parameters = kwargs.get('parameters', MISSING)
         error_responses = kwargs.get('error_responses', MISSING)
         bearer_token = kwargs.get('bearer_token', MISSING)
+        rate_limit = kwargs.get('rate_limit', MISSING)
+        rate_limit_interval = kwargs.get('rate_limit_interval', MISSING)
 
-        obj = type.__call__(cls, uri=uri, headers=headers, cookies=cookies, parameters=parameters,
-                            error_responses=error_responses, bearer_token=bearer_token)
+        obj = type.__call__(
+            cls, uri=uri, headers=headers, cookies=cookies, parameters=parameters,
+            error_responses=error_responses, bearer_token=bearer_token, rate_limit=rate_limit,
+            rate_limit_interval=rate_limit_interval
+        )
         if hasattr(obj, '__post_init__'):
             obj.__post_init__(*args, **kwargs)
         return obj
