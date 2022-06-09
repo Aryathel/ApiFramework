@@ -2,12 +2,20 @@ Arya's API Framework
 ====================
 
 .. image:: https://img.shields.io/pypi/v/arya_api_framework.svg
-   :target: https://pypi.python.org/project/arya-api-framework/
-   :alt: PyPI version info
+    :target: https://pypi.python.org/project/arya-api-framework/
+    :alt: PyPI version info
 
 .. image:: https://img.shields.io/pypi/pyversions/arya_api_framework.svg
-   :target: https://pypi.python.org/project/arya-api-framework/
-   :alt: PyPI supported Python versions
+    :target: https://pypi.python.org/project/arya-api-framework/
+    :alt: PyPI supported Python versions
+
+.. image:: https://img.shields.io/github/license/Aryathel/APIFramework.svg
+    :target: https://github.com/Aryathel/ApiFramework/blob/main/LICENSE
+    :alt: MIT License
+
+.. image:: https://img/shields.io/pypi/month/arya_api_framework.svg
+    :target: https://pypi.python.org/project/arya-api-framework/
+    :alt: Downloads
 
 This is a simple package that is meant to be a
 `Pydantic <https://pydantic-docs.helpmanual.io/>`__ implementation
