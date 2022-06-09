@@ -1,8 +1,3 @@
-.. Arya's API Framework documentation master file, created by
-   sphinx-quickstart on Tue Jun  7 22:38:32 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Arya's API Framework
 ====================
 
@@ -44,3 +39,9 @@ API Reference
    async_framework
    utils
    models
+
+Stuck?
+------
+If you are struggling to find specific information, see these references:
+    - `Search <search.html>`_
+    - `Glossary <genindex.html>`_

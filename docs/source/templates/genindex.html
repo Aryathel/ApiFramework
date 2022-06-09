@@ -9,6 +9,7 @@
     // this is pretty finicky but it should work.
     for(let el of elements) {
       let key = el.getAttribute('href').split('#', 2)[1]
+      key = key.replace('.params', '');
       if(!key.startsWith('arya_api_framework.')) {
         continue;
       }

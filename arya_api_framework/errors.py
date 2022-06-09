@@ -20,7 +20,8 @@ class MISSING(Exception):
 
 
 class ValidationError(Exception):
-    """Used when validating a variables type."""
+    """Used when validating a variable's type."""
+    pass
 
 
 # ---------- Client Errors ----------

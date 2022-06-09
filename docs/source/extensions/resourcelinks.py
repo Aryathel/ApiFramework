@@ -100,34 +100,46 @@ class InheritedClass(SphinxDirective):
 
 
 class StaticExternalInheritedClass(SphinxDirective):
-    has_content = False
-    required_arguments = 2
-    optional_arguments = 1
-    final_argument_whitespace = True
-    option_spec = {}
+    has_content = True
+    required_arguments = 0
+    optional_arguments = 0
+    option_spec = {
+        'objtype': str,
+        'link': str
+    }
 
     def run(self):
-        args = [arg.strip().rstrip(',') for arg in self.arguments]
-        objtype = args[0]
-        link = args[1]
-        text = args[2] if len(args) == 3 else link
+        try:
+            objtype = self.options['objtype'].strip()
+            link = self.options['link'].strip()
+            text = '\n'.join(self.content) if self.content else link
+
+        except KeyError as e:
+            raise KeyError(f"{self.env.temp_data['docname']} {self.env.temp_data['object']}: {e.args[0]}")
+
         return [results_to_node(text, obj_type=objtype, uri=link, internal=False)]
 
 
 class ExternalInheritedClass(SphinxDirective):
-    has_content = False
-    required_arguments = 3
-    optional_arguments = 1
-    final_argument_whitespace = True
-    option_spec = {}
+    has_content = True
+    required_arguments = 0
+    optional_arguments = 0
+    option_spec = {
+        'objtype': str,
+        'extlink-root': str,
+        'extlink-path': str
+    }
 
     def run(self):
-        args = [arg.strip().rstrip(',') for arg in self.arguments]
-        objtype = args[0]
-        form = args[1]
-        form = self.config.extlinks[form]
-        link = form[0] % args[2]
-        text = args[3] if len(args) == 4 else link
+        try:
+            objtype = self.options['objtype'].strip()
+            form = self.options['extlink-root'].strip()
+            form = self.config.extlinks[form]
+            link = form[0] % self.options['extlink-path'].strip()
+            text = '\n'.join(self.content) if self.content else link
+
+        except KeyError as e:
+            raise KeyError(f"{self.env.temp_data['docname']} {self.env.temp_data['object']}: {e.args[0]}")
 
         return [results_to_node(text, obj_type=objtype, uri=link, internal=False)]
 

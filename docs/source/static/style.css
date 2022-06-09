@@ -300,7 +300,7 @@ header > nav.mobile-only .search-wrapper {
     -ms-user-select: none;
 }
 
-.main-heading span {
+.main-heading .header-title {
     font-weight: bold;
     position: absolute;
     top: 0;

@@ -43,7 +43,12 @@ class ClientInit(type):
 
 class BaseModel(PydBaseModel):
     """
-    .. external_inherits_from:: class, pydantic, usage/models/#basic-model-usage, pydantic.BaseModel
+    .. external_inherits_from::
+        :objtype: class
+        :extlink-root: pydantic
+        :extlink-path: usage/models/#basic-model-usage
+
+        pydantic.BaseModel
 
     These models include data validation on the attributes given to them, and allow for very
     direct control over response formats. Additionally, they allow to easily creating database-like
@@ -63,9 +68,10 @@ class BaseModel(PydBaseModel):
     ) -> DictStrAny:
         """
         .. external_inherits_from::
-            method,
-            pydantic,
-            https://pydantic-docs.helpmanual.io/usage/exporting_models/#modeldict,
+            :objtype: method
+            :extlink-root: pydantic
+            :extlink-path: usage/exporting_models/#modeldict
+
             pydantic.BaseModel.dict
 
         Generate a :py:class:`dict` representation of the model, optionally specifying
@@ -132,9 +138,10 @@ class BaseModel(PydBaseModel):
     ) -> str:
         """
         .. external_inherits_from::
-            method,
-            pydantic,
-            usage/exporting_models/#modeljson,
+            :objtype: method
+            :extlink-root: pydantic
+            :extlink-path: usage/exporting_models/#modeljson
+
             pydantic.BaseModel.json
 
         Serializes the model to a JSON string. Typically will call :meth:`dict` and then
@@ -224,9 +231,10 @@ class BaseModel(PydBaseModel):
     ) -> PydBaseModel:
         """
         .. external_inherits_from::
-            method,
-            pydantic,
-            usage/exporting_models/#modelcopy,
+            :objtype: method
+            :extlink-root: pydantic
+            :extlink-path: usage/exporting_models/#modelcopy
+
             pydantic.BaseModel.copy
 
         Returns a duplicate of the model. This is very handy for use with immutable models.
@@ -264,10 +272,29 @@ class BaseModel(PydBaseModel):
     def parse_obj(cls: Type[PydBaseModel], obj: Any) -> PydBaseModel:
         """
         .. external_inherits_from::
-            classmethod,
-            pydantic,
-            usage/models/#helper-functions,
+            :objtype: classmethod
+            :extlink-root: pydantic
+            :extlink-path: usage/models/#helper-functions
+
             pydantic.BaseModel.parse_obj
+
+        Instantiates a model from a given :py:class:`dict`.
+
+        Arguments
+        ---------
+            obj: Any
+                The data to instantiate the class from. This should either be a :py:class:`dict` or an object
+                that can be cast as one using ``dict(obj)``.
+
+        Raises
+        ------
+            ``pydantic.ValidationError``
+                Raised if the :paramref:`obj` parameter is not :py:class:`dict` and cannot be made into one.
+
+        Returns
+        -------
+            :class:`BaseModel`
+                An instantiated model from the :paramref:`obj` provided.
 
         |inherited|
         """
@@ -285,10 +312,52 @@ class BaseModel(PydBaseModel):
     ) -> PydBaseModel:
         """
         .. external_inherits_from::
-            classmethod,
-            pydantic,
-            usage/models/#helper-functions,
+            :objtype: classmethod
+            :extlink-root: pydantic
+            :extlink-path: usage/models/#helper-functions
+
             pydantic.BaseModel.parse_raw
+
+        Arguments
+        ---------
+            b: Union[:py:class:`str`, :py:class:`bytes`]
+                The content to load into the model. This should be either a JSON serialized :py:class:`str`,
+                or a :py:func:`pickle.dumps` object.
+
+        Keyword Args
+        ------------
+            content_type: Optional[:py:class:`str`]
+                The content type of the :paramref:`b` data passed. Should either be
+                ``application/json`` or ``application/pickle``, if provided. Defaults to ```None``.
+            encoding: Optional[:py:class:`str`]
+                If a :py:class:`bytes` object is passed with a content type of ``json``,
+                it must be decoded using the same method it was encoded in. This defaults to
+                ``utf8``.
+            proto: Optional[``pydantic.Protocol``]
+                Another method of more directly specifying the :paramref:`content_type` of the data passed.
+                This should be ``pydantic.Protocol.json`` or ``pydantic.Protocol.pickle`` if given. Otherwise,
+                if neither the :paramref:`content_type` or this argument are passed, this is defaulted
+                to ``Protocol.json``.
+            allow_pickle: Optional[:py:class:`bool`]
+                Whether or not to allow reading of pickled input. If the :paramref:`content_type` or
+                :paramref:`protocol <proto>` are set to a ``pickle`` data type, this must be set to
+                ``True``. Defaults to ``False``
+
+        Raises
+        ------
+            ``pydantic.ValidationError``
+                Raised if the :paramref:`b` cannot be used to instantiate the model.
+            :py:class:`RuntimeError`
+                Raised when trying to decode with pickle without setting :paramref:`allow_pickle` to ``True``.
+
+        Returns
+        -------
+            :class:`BaseModel`
+                An instantiated model from the :paramref:`b` provided.
+
+        Returns
+        -------
+
 
         |inherited|
         """
@@ -312,9 +381,10 @@ class BaseModel(PydBaseModel):
     ) -> PydBaseModel:
         """
         .. external_inherits_from::
-            classmethod
-            pydantic
-            usage/models/#helper-functions
+            :objtype: classmethod
+            :extlink-root: pydantic
+            :extlink-path: usage/models/#helper-functions
+
             pydantic.BaseModel.parse_file
 
         |inherited|
