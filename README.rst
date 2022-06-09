@@ -10,7 +10,7 @@ Arya's API Framework
    :alt: PyPI supported Python versions
 
 This is a simple package that is meant to be a
-`Pydantic <https://pydantic-docs.helpmanual.io/>` implementation
+`Pydantic <https://pydantic-docs.helpmanual.io/>`__ implementation
 for a basic RESTful API interaction client. This includes both sync and async usages.
 
 Installation
@@ -26,8 +26,6 @@ Asynchronous implementation:
 .. code-block:: sh
 
     python -m pip install arya-api-framework[async]
-
-----
 
 Note
 ----
