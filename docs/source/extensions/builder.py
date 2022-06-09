@@ -79,7 +79,7 @@ def add_builders(app):
                              for base in original.mro()[1:])
         print(injected_mro)
         new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
-        print(new_builder)
+        print(new_builder, new_builder.__class__)
         app.set_translator('readthedocs', DPYHTML5Translator, override=True)
         app.add_builder(new_builder, override=True)
 
