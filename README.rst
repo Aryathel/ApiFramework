@@ -29,5 +29,4 @@ Asynchronous implementation:
 
 Note
 ----
-This may be documented properly in the future, but I don't really see a reason for that
-right now, given that I am only creating for specific usages.
+Proper documentation is being worked on at the moment.
