@@ -77,6 +77,7 @@ def add_builders(app):
         print(f"Thingy 3")
         injected_mro = tuple(base if base is not StandaloneHTMLBuilder else DPYStandaloneHTMLBuilder
                              for base in original.mro()[1:])
+        print(injected_mro)
         new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
         print(new_builder)
         app.set_translator('readthedocs', DPYHTML5Translator, override=True)
