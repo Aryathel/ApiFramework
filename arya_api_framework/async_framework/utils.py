@@ -1,6 +1,6 @@
-from os import PathLike
 from typing import Union, Optional, Dict, Mapping, List
 from collections import OrderedDict
+from pathlib import Path
 
 from ..errors import AsyncClientError
 
@@ -12,7 +12,7 @@ except ImportError:
     is_async = False
 
 
-async def chunk_file_reader(file: Union[str, PathLike[str]]):
+async def chunk_file_reader(file: Union[str, Path]):
     if not is_async:
         raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
 

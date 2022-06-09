@@ -1,8 +1,8 @@
-from os import PathLike
 from typing import Union
 from functools import wraps
 import time
 import logging
+from pathlib import Path
 
 try:
     from ratelimit import RateLimitException
@@ -12,7 +12,7 @@ except ImportError:
 _log = logging.getLogger('arya_api_framework.Sync')
 
 
-def chunk_file_reader(file: Union[str, PathLike[str]]):
+def chunk_file_reader(file: Union[str, Path]):
     with open(file, 'rb') as f:
         chunk = f.read(64 * 1024)
 
