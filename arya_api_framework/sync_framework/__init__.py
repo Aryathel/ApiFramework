@@ -22,9 +22,9 @@ try:
 except ImportError:
     is_sync = False
 
-__all__ = {
+__all__ = [
     "SyncClient"
-}
+]
 
 _log: logging.Logger = logging.getLogger("arya_api_framework.Sync")
 
@@ -40,7 +40,6 @@ SessionT = TypeVar('SessionT', bound='Session')
 
 
 class SyncClient(metaclass=ClientInit):
-    """The basic Client implementation that all API clients inherit from."""
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None

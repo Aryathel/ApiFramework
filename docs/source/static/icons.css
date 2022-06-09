@@ -1,0 +1,11 @@
+@font-face {
+    font-family: 'Custom Icon';
+    font-style: normal;
+    font-weight: 400;
+    src: url('icons.svg') format('svg');
+}
+
+.custom-icons {
+    font-family: 'Custom Icon' !important;
+    color: var(--purple-2) !important;
+}

@@ -22,9 +22,9 @@ try:
 except ImportError:
     is_async = False
 
-__all__ = {
+__all__ = [
     "AsyncClient"
-}
+]
 
 _log: logging.Logger = logging.getLogger("arya_api_framework.Async")
 

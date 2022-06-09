@@ -1,0 +1,231 @@
+{# Build sphinx_version_info tuple from sphinx_version string in pure Jinja #}
+{%- set (_ver_major, _ver_minor, _ver_bugfix) = sphinx_version.split('.') | map('int') -%}
+{%- set sphinx_version_info = (_ver_major, _ver_minor, _ver_bugfix) -%}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+    {%- block extrahead %} {% endblock %}
+    <!-- end extra head -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    {%- block css %}
+    {%- for css in css_files %}
+    {%- if css|attr("filename") %}
+    {{ css_tag(css) }}
+    {%- else %}
+    <link rel="stylesheet" href="{{ pathto(css, 1)|e }}" type="text/css"/>
+    {%- endif %}
+    {%- endfor %}
+    {%- endblock %}
+    <link rel="stylesheet" href="{{ pathto('_static/style.css', 1)|e }}" type="text/css"/>
+    <link rel="stylesheet" href="{{ pathto('_static/codeblocks.css', 1) }}" type="text/css"/>
+    <link rel="stylesheet" href="{{ pathto('_static/icons.css', 1)|e }}" type="text/css"/>
+    {%- block scripts %}
+    <script id="documentation_options" data-url_root="{{ pathto('', 1) }}"
+            src="{{ pathto('_static/documentation_options.js', 1) }}"></script>
+    {%- for js in script_files %}
+    {{ js_tag(js) }}
+    {%- endfor %}
+    {%- endblock %}
+    {%- if pageurl %}
+    <link rel="canonical" href="{{ pageurl|e }}"/>
+    {%- endif %}
+    {%- if favicon %}
+    <link rel="shortcut icon" href="{{ pathto('_static/' + favicon, 1)|e }}"/>
+    {%- endif %}
+    {%- block linktags %}
+    {%- if hasdoc('about') %}
+    <link rel="author" title="{{ _('About these documents') }}" href="{{ pathto('about') }}"/>
+    {%- endif %}
+    {%- if hasdoc('genindex') %}
+    <link rel="index" title="{{ _('Index') }}" href="{{ pathto('genindex') }}"/>
+    {%- endif %}
+    {%- if hasdoc('search') %}
+    <link rel="search" title="{{ _('Search') }}" href="{{ pathto('search') }}"/>
+    {%- endif %}
+    {%- if hasdoc('copyright') %}
+    <link rel="copyright" title="{{ _('Copyright') }}" href="{{ pathto('copyright') }}"/>
+    {%- endif %}
+    {%- if next %}
+    <link rel="next" title="{{ next.title|striptags|e }}" href="{{ next.link|e }}"/>
+    {%- endif %}
+    {%- if prev %}
+    <link rel="prev" title="{{ prev.title|striptags|e }}" href="{{ prev.link|e }}"/>
+    {%- endif %}
+    {%- endblock %}
+</head>
+<body>
+{%- block header %}{% endblock %}
+<div class="main-grid">
+    {#- The main navigation header #}
+    <header class="grid-item">
+        <nav>
+            <a href="{{ pathto(master_doc)|e }}" class="main-heading">
+                {%- if logo %}
+                {%- if sphinx_version_info < (4, 0) -%}
+                <img src="{{ pathto('_static/' + logo, 1) }}" class="logo" alt="{{ _('Logo') }}"/>
+                {%- else %}
+                <img src="{{ logo_url }}" class="logo" alt="{{ _('Logo') }}"/>
+                {%- endif %}
+                {%- endif %}
+                <span>Arya's API Framework</span>
+            </a>
+            <a href="https://github.com/Aryathel/APIFramework" title="GitHub" class="header-icon">
+                <i class="fab fa-github-square"></i>
+            </a>
+            <a accesskey="S" class="settings header-icon non-mobile-only" onclick="settingsModal.open();">
+                <i class="fas fa-cog"></i>
+            </a>
+            <!--<a href="{{ discord_invite }}" title="{{ _('Discord') }}"><span class="material-icons custom-icons">discord</span></a>-->
+            <!--<a href="{{ pathto('faq') }}" title="FAQ"><span class="material-icons">help_center</span></a>-->
+            {#- If we have more links we can put them here #}
+            <a onclick="mobileSearch.open();" title="{{ _('Search') }}" id="open-search" class="mobile-only header-icon">
+                <i class="fas fa-search"></i>
+            </a>
+            <a onclick="mobileSearch.close();" title="{{ _('Close') }}" id="close-search" class="mobile-only header-icon" hidden>
+                <i class="fas fa-times"></i>
+            </a>
+        </nav>
+        <nav class="mobile-only">
+            <form role="search" class="search" action="{{ pathto('search') }}" method="get">
+                <div class="search-wrapper">
+                    <input type="search" name="q" placeholder="{{ _('Search documentation') }}"/>
+                    <button type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </nav>
+    </header>
+    {#- The sub-header with search and extension related selection #}
+    <!--<div class="sub-header grid-item">
+        <label for="documentation_select">{{ _('View Documentation For') }}</label>
+        <select id="documentation_select" onchange="window.location = this.value;">
+          {%- if pagename is prefixedwith 'ext/' %}
+          <option value="{{ pathto(master_doc)|e }}">discord</option>
+          {%- else %}
+          <option value="{{ pathto(pagename) }}" selected>discord</option>
+          {%- endif %}
+          {%- for ext, p in discord_extensions %}
+          <option value="{{ pathto(p + '/index')|e }}" {% if pagename is prefixedwith p %}selected{% endif %}>{{ ext }}</option>
+          {%- endfor %}
+        </select>
+        <form role="search" class="search" action="{{ pathto('search') }}" method="get">
+            <div class="search-wrapper">
+                <input type="search" name="q" placeholder="{{ _('Search documentation') }}"/>
+                <button type="submit">
+                    <i class="fas fa-search"></i>>
+                </button>
+            </div>
+        </form>
+    </div>-->
+    {#- The sidebar component #}
+    <aside class="grid-item">
+        {%- if display_toc %}
+        <span id="hamburger-toggle" class="header-icon">
+            <i class="fas fa-bars"></i>
+        </span>
+        {%- endif %}
+        <span id="settings-toggle" class="settings header-icon" onclick="settingsModal.open();">
+            <i class="fas fa-cog"></i>
+        </span>
+        <div id="sidebar">
+            <form id="sidebar-form" role="search" class="search" action="{{ pathto('search') }}" method="get">
+                <div class="search-wrapper search-sidebar">
+                    <input type="search" name="q" placeholder="{{ _('Search documentation') }}">
+                    <button type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+            {%- include "localtoc.html" %}
+        </div>
+    </aside>
+    {#- The actual body of the contents #}
+    <main class="grid-item" role="main">
+        {% block body %} {% endblock %}
+    </main>
+    {%- block footer %}
+    <footer class="grid-item">
+        {%- if show_copyright %}
+        {%- if hasdoc('copyright') %}
+        {% trans path=pathto('copyright'), copyright=copyright|e %}&#169; <a href="{{ path }}">Copyright</a> {{
+        copyright }}.{% endtrans %}
+        {%- else %}
+        {% trans copyright=copyright|e %}&#169; Copyright {{ copyright }}.{% endtrans %}
+        {%- endif %}
+        {%- endif %}
+        {%- if last_updated %}
+        {% trans last_updated=last_updated|e %}Last updated on {{ last_updated }}.{% endtrans %}
+        {%- endif %}
+        {%- if show_sphinx %}
+        {% trans sphinx_version=sphinx_version|e %}Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> {{
+        sphinx_version }}.{% endtrans %}
+        {%- endif %}
+    </footer>
+    {%- endblock %}
+</div>
+{%- if READTHEDOCS %}
+<script>
+    if (typeof READTHEDOCS_DATA !== "undefined") {
+        if (!READTHEDOCS_DATA.features) {
+          READTHEDOCS_DATA.features = {};
+        }
+        READTHEDOCS_DATA.features.docsearch_disabled = true;
+      }
+
+</script>
+{%- endif %}
+
+<div id="settings" class="modal" onclick="if (event.target == this){ settingsModal.close(); }" hidden>
+    <div class="modal-content">
+      <span class="close header-icon" onclick="settingsModal.close();" title="Close">
+        <i class="fas fa-times"></i>
+      </span>
+        <h1>{{ _('Settings') }}</h1>
+
+        <h2>{{ _('Font') }}</h2>
+        <div class="setting">
+            <h3>{{ _('Use a serif font:') }}
+                <label class="toggle"
+                       title="{{ _('Use a serif font? Your system font will be used, falling back to serif.')}}">
+                    <input type="checkbox" name="useSerifFont" onclick="updateSetting(this);">
+                    <span class="toggle-slider"></span>
+                </label>
+            </h3>
+        </div>
+
+        <h2>{{ _('Theme') }}</h2>
+        <div class="setting">
+            <h3>
+                <label class="toggle" title="{{ _('Set your theme based on your system preferences') }}">
+                    <input type="radio" name="setTheme" onclick="updateSetting(this);" value="automatic" checked>
+                </label>
+                {{ _('Automatic') }}
+            </h3>
+            <h3>
+                <label class="toggle" title="{{ _('Set your theme to light theme') }}">
+                    <input type="radio" name="setTheme" onclick="updateSetting(this);" value="light">
+                </label>
+                {{ _('Light') }}
+            </h3>
+            <h3>
+                <label class="toggle" title="{{ _('Set your theme to dark theme') }}">
+                    <input type="radio" name="setTheme" onclick="updateSetting(this);" value="dark">
+                </label>
+                {{ _('Dark') }}
+            </h3>
+        </div>
+
+    </div>
+</div>
+
+<div id="to-top" onclick="scrollToTop()" {%- if READTHEDOCS %} class="is-rtd" {%- endif %} hidden>
+    <span><i class="fas fa-arrow-up"></i> to top</span>
+</div>
+
+</body>
+</html>
