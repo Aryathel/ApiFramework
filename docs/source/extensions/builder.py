@@ -2,6 +2,9 @@ from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.environment.adapters.indexentries import IndexEntries
 from sphinx.writers.html5 import HTML5Translator
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 class DPYHTML5Translator(HTML5Translator):
     def visit_section(self, node):
@@ -56,9 +59,10 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 def add_custom_jinja2(app):
     # print(app.builder)
     # print(app.builder.templates.environment)
-    env = app.builder.templates.environment
-    env.tests['prefixedwith'] = str.startswith
-    env.tests['suffixedwith'] = str.endswith
+    #env = app.builder.templates.environment
+    #env.tests['prefixedwith'] = str.startswith
+    #env.tests['suffixedwith'] = str.endswith
+    pass
 
 
 def add_builders(app):
