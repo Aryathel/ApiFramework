@@ -57,33 +57,29 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 
 
 def add_custom_jinja2(app):
-    # print(app.builder)
+    builder: DPYStandaloneHTMLBuilder = app.builder
+    print(builder, builder.init_templates())
     # print(app.builder.templates.environment)
-    #env = app.builder.templates.environment
-    #env.tests['prefixedwith'] = str.startswith
-    #env.tests['suffixedwith'] = str.endswith
-    pass
+    env = builder.templates.environment
+    env.tests['prefixedwith'] = str.startswith
+    env.tests['suffixedwith'] = str.endswith
 
 
 def add_builders(app):
     """This is necessary because RTD injects their own for some reason."""
-    print("ADD_BUILDERS")
     app.set_translator('html', DPYHTML5Translator, override=True)
     app.add_builder(DPYStandaloneHTMLBuilder, override=True)
 
     try:
         original = app.registry.builders['readthedocs']
-        print(f"Thingy {original}")
     except KeyError:
-        print("Thingy 2")
         pass
     else:
-        print(f"Thingy 3")
         injected_mro = tuple(base if base is not StandaloneHTMLBuilder else DPYStandaloneHTMLBuilder
                              for base in original.mro()[1:])
         print(injected_mro)
         new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
-        print(new_builder, type(new_builder), new_builder.__bases__)
+        print(new_builder, new_builder.__bases__)
         app.set_translator('readthedocs', DPYHTML5Translator, override=True)
         app.add_builder(new_builder, override=True)
 
