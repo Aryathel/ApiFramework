@@ -58,7 +58,7 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 
 def add_custom_jinja2(app):
     builder: DPYStandaloneHTMLBuilder = app.builder
-    print(builder, builder.init_templates())
+    print(builder, builder.__class__.__bases__)
     # print(app.builder.templates.environment)
     env = builder.templates.environment
     env.tests['prefixedwith'] = str.startswith
