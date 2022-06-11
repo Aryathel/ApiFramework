@@ -74,6 +74,7 @@ def add_builders(app):
     app.add_builder(DPYStandaloneHTMLBuilder, override=True)
 
     try:
+        print(app.registry.builders)
         original = app.registry.builders['readthedocs']
         print(original.mro())
     except KeyError:
@@ -86,6 +87,7 @@ def add_builders(app):
         print(new_builder, new_builder.__bases__)
         app.set_translator('readthedocs', DPYHTML5Translator, override=True)
         app.add_builder(new_builder, override=True)
+        print(app.registry.builders)
 
 
 def setup(app):
