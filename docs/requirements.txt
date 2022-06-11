@@ -6,3 +6,4 @@ requests
 Sphinx
 sphinx-paramlinks
 sphinxcontrib-trio
+sphinx_toolbox

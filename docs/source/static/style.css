@@ -568,6 +568,13 @@ p {
     margin-bottom: 8px;
 }
 
+.shield {
+    width: auto;
+    height: 20px;
+    margin: 0;
+    display: inline-block;
+}
+
 /* modal stuff */
 
 div.modal {

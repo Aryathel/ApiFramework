@@ -39,7 +39,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx_paramlinks',
     'sphinxcontrib_trio',
-    'sphinx_toolbox.code',
+    'sphinx_toolbox.shields',
     'details',
     'exception_hierarchy',
     'attributetable',
@@ -82,7 +82,6 @@ exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
 html_experimental_html5_writer = True
 html_theme = 'basic'
 
@@ -127,6 +126,10 @@ github_url = "https://github.com/Aryathel/APIFramework"
 # Theme config
 html_theme_options = {
 }
+
+# Toolbox options
+github_username = "Aryathel"
+github_repository = "ApiFramework"
 
 
 def _i18n_warning_filter(record: logging.LogRecord) -> bool:
