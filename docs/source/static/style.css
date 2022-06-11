@@ -685,19 +685,19 @@ main h4 { color: var(--main-big-headers-text); }
 main h5 { color: var(--main-h5-header-text); }
 main h6 { color: var(--main-h6-header-text); }
 
-main h1 { margin: 0 0 10px 0; }
+main h1 { margin: 0 0 10px; }
 main h2,
-main h3 { margin: 10px 0px 10px 0px; }
+main h3 { margin: 10px 0px; }
 main h4,
 main h5,
-main h6 { margin: 20px 0px 10px 0px; }
+main h6 { margin: 20px 0px 10px; }
 
-main h1 { padding: 0 0 10px 0; }
+main h1 { padding: 0 0 10px; }
 main h2,
-main h3 { padding: 10px 0 10px 0; }
-main h4 { padding: 10px 0 10px 0; }
+main h3 { padding: 10px 0; }
+main h4 { padding: 10px 0; }
 main h5,
-main h6 { padding: 10px 0 0 0; }
+main h6 { padding: 10px 0 0; }
 
 main h1,
 main h2,
@@ -714,7 +714,7 @@ main h6 { font-size: 1em; }
 a.headerlink {
   color: var(--header-link);
   font-size: 0.8em;
-  padding: 0 4px 0 4px;
+  padding: 0 4px;
   text-decoration: none;
   visibility: hidden;
 }
@@ -810,7 +810,7 @@ li > blockquote {
 
 /* admonitions */
 div.admonition {
-  padding: 0 0.8em 0.8em 0.8em !important;
+  padding: 0 0.8em 0.8em !important;
   margin: 0.8em 0;
   border-radius: 2.5px;
   border-left-width: 6px;
@@ -1038,7 +1038,7 @@ pre {
   color: var(--codeblock-text);
   font-size: 0.75em;
   line-height: 1.5em;
-  margin: 1.5em 0 1.5em 0;
+  margin: 1.5em 0;
   padding: 10px;
   overflow-x: auto;
 }
