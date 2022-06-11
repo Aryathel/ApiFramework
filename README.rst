@@ -37,4 +37,10 @@ Asynchronous implementation:
 
 Note
 ----
-Proper documentation is being worked on at the moment.
+Proper documentation is being worked on at the moment: https://apiframework.readthedocs.io/en/latest/
+
+Citation
+--------
+Credit for documentation infrastructure goes to `Rapptz <https://github.com/Rapptz>`_ and the
+`discord.py <https://github.com/Rapptz/discord.py>`_ team. The documentation for this project is a modified version of
+their custom theme.
