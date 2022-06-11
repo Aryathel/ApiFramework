@@ -59,7 +59,7 @@ intersphinx_mapping = {
 # External links
 extlinks = {
     'pydantic': ('https://pydantic-docs.helpmanual.io/%s', '%s'),
-    'httpcode': ('https://www.rfc-editor.org/rfc/rfc9110.html#%s', '%s')
+    'http': ('https://www.rfc-editor.org/rfc/rfc9110.html#%s', '%s')
 }
 
 # Napoleon settings

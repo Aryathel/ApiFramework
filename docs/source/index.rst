@@ -124,15 +124,16 @@ API Reference
 
 Information
 -----------
-Check this out! :ref:`500`
+Here lies a bunch of random information related to the project at least a little bit.
 
 .. toctree::
     :maxdepth: 2
 
     statuses
 
-Stuck?
-------
+Glossary
+--------
 If you are struggling to find specific information, see these references:
-    - `Search <search.html>`_
-    - `Glossary <genindex.html>`_
+
+    * `Search <search.html>`_
+    * `Glossary <genindex.html>`_

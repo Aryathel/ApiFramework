@@ -164,7 +164,7 @@ class ResponseParseError(ClientError):
 class HTTPError(FrameworkException):
     """The base exception for any request errors.
 
-    See :httpcode:`this resource <name-status-codes>` for information about HTTP protocols.
+    See :ref:`http-status-codes` for information about HTTP status codes.
 
     Attributes
     ----------
@@ -188,7 +188,7 @@ class HTTPRedirect(HTTPError):
 
     These codes indicate that further action needs to be taken by the user in order to fulfill the request.
 
-    See :httpcode:`this resource <status.3xx>` for information about ``3xx HTTP`` responses.
+    See :ref:`3xx` for information about ``3xx`` responses.
     """
     pass
 
@@ -202,7 +202,7 @@ class HTTPClientError(HTTPError):
     These codes occur when an error has occurred as a result of the client application or user input,
     such as a malformed request.
 
-    See :httpcode:`this resource <status.4xx>` for information about ``4xx HTTP`` responses.
+    See :ref:`4xx` for information about ``4xx`` responses.
     """
     pass
 
@@ -215,7 +215,7 @@ class HTTPServerError(HTTPError):
 
     These codes occur when the server is aware that is has made an error, or is incapable of performing the request.
 
-    See :httpcode:`this resource <status.5xx>` for information about ``5xx HTTP`` responses.
+    See :ref:`5xx` for information about ``5xx`` responses.
     """
     pass
 
@@ -225,7 +225,7 @@ class HTTPMultipleChoices(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`300: Multiple Choices <status.300>`
+    :ref:`300`
 
     Raised when a 300 error is received, meaning that the request has more than one possible response,
     and the request needs to be more specific.
@@ -237,7 +237,7 @@ class HTTPMovedPermanently(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`301: Moved Permanently <status.301>`
+    :ref:`301`
 
     Raised when a 301 error is received, meaning that the requested resource has been permanently
     moved to a different URL.
@@ -249,7 +249,7 @@ class HTTPFound(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`302: Found <status.302>`
+    :ref:`302`
 
     Raised when a 302 error is received, meaning that the request resource has been temporarily moved to a
     different URL.
@@ -261,7 +261,7 @@ class HTTPSeeOther(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`303: See Other <status.303>`
+    :ref:`303`
 
     Raised when a 303 error is received, meaning that the request has linked to another page instead of responding.
 
@@ -275,7 +275,7 @@ class HTTPNotModified(HTTPRedirect):
     """"
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`304: Not Modified <status.304>`
+    :ref:`304`
 
     Raised when a 304 error is received, meaning that the requested resource does not need to be transmitted again,
     as it is simply a redirection to a cached resource.
@@ -287,7 +287,7 @@ class HTTPUseProxy(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`305: Use Proxy <status.305>`
+    :ref:`305`
 
     Raised when a 305 error is received, meaning that the resource requested is only available through a proxy.
     """
@@ -298,7 +298,7 @@ class HTTPReserved(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`306: (Unused) <status.306>`
+    :ref:`306`
     """
     status_code = HTTP_306_RESERVED
 
@@ -307,7 +307,7 @@ class HTTPTemporaryRedirect(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`307: Temporary Redirect <status.307>`
+    :ref:`307`
     """
     status_code = HTTP_307_TEMPORARY_REDIRECT
 
@@ -316,7 +316,7 @@ class HTTPPermanentRedirect(HTTPRedirect):
     """
     .. inherits_from:: HTTPRedirect
 
-    :httpcode:`308: Permanent Redirect <status.308>`
+    :ref:`308`
     """
 
     status_code = HTTP_308_PERMANENT_REDIRECT
@@ -324,163 +324,364 @@ class HTTPPermanentRedirect(HTTPRedirect):
 
 # 400
 class HTTPBadRequest(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`400`
+    """
     status_code = HTTP_400_BAD_REQUEST
 
 
 class HTTPUnauthorized(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`401`
+    """
     status_code = HTTP_401_UNAUTHORIZED
 
 
 class HTTPPaymentRequired(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`402`
+    """
     status_code = HTTP_402_PAYMENT_REQUIRED
 
 
 class HTTPForbidden(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`403`
+    """
+
     status_code = HTTP_403_FORBIDDEN
 
 
 class HTTPNotFound(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`404`
+    """
     status_code = HTTP_404_NOT_FOUND
 
 
 class HTTPMethodNotAllowed(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`405`
+    """
     status_code = HTTP_405_METHOD_NOT_ALLOWED
 
 
 class HTTPNotAcceptable(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`406`
+    """
     status_code = HTTP_406_NOT_ACCEPTABLE
 
 
 class HTTPProxyAuthenticationRequired(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`407`
+    """
     status_code = HTTP_407_PROXY_AUTHENTICATION_REQUIRED
 
 
 class HTTPRequestTimeout(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`408`
+    """
     status_code = HTTP_408_REQUEST_TIMEOUT
 
 
 class HTTPConflict(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`409`
+    """
     status_code = HTTP_409_CONFLICT
 
 
 class HTTPGone(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`410`
+    """
     status_code = HTTP_410_GONE
 
 
 class HTTPLengthRequired(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`411`
+    """
     status_code = HTTP_411_LENGTH_REQUIRED
 
 
 class HTTPPreconditionFailed(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`412`
+    """
     status_code = HTTP_412_PRECONDITION_FAILED
 
 
 class HTTPRequestEntityTooLarge(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`413`
+    """
     status_code = HTTP_413_REQUEST_ENTITY_TOO_LARGE
 
 
 class HTTPRequestUriTooLong(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`414`
+    """
     status_code = HTTP_414_REQUEST_URI_TOO_LONG
 
 
 class HTTPUnsupportedMediaType(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`415`
+    """
     status_code = HTTP_415_UNSUPPORTED_MEDIA_TYPE
 
 
 class HTTPRequestedRangeNotSatisfiable(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`416`
+    """
     status_code = HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
 
 
 class HTTPExpectationFailed(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`417`
+    """
     status_code = HTTP_417_EXPECTATION_FAILED
 
 
 class HTTPImATeapot(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`418`
+    """
     status_code = HTTP_418_IM_A_TEAPOT
 
 
 class HTTPMisdirectedRequest(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`419`
+    """
     status_code = HTTP_421_MISDIRECTED_REQUEST
 
 
 class HTTPUnprocessableEntity(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`422`
+    """
     status_code = HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class HTTPLocked(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`423`
+    """
     status_code = HTTP_423_LOCKED
 
 
 class HTTPFailedDependency(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`424`
+    """
     status_code = HTTP_424_FAILED_DEPENDENCY
 
 
 class HTTPTooEarly(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`425`
+    """
     status_code = HTTP_425_TOO_EARLY
 
 
 class HTTPUpgradeRequired(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`426`
+    """
     status_code = HTTP_426_UPGRADE_REQUIRED
 
 
 class HTTPPreconditionRequired(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`428`
+    """
     status_code = HTTP_428_PRECONDITION_REQUIRED
 
 
 class HTTPTooManyRequests(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`429`
+    """
     status_code = HTTP_429_TOO_MANY_REQUESTS
 
 
 class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`431`
+    """
     status_code = HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE
 
 
 class HTTPUnavailableForLegalReasons(HTTPClientError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`451`
+    """
     status_code = HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS
 
 
 # 500
 class HTTPInternalServerError(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`500`
+    """
     status_code = HTTP_500_INTERNAL_SERVER_ERROR
 
 
 class HTTPNotImplemented(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`501`
+    """
     status_code = HTTP_501_NOT_IMPLEMENTED
 
 
 class HTTPBadGateway(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`502`
+    """
     status_code = HTTP_502_BAD_GATEWAY
 
 
 class HTTPServiceUnavailable(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`503`
+    """
     status_code = HTTP_503_SERVICE_UNAVAILABLE
 
 
 class HTTPGatewayTimeout(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`504`
+    """
     status_code = HTTP_504_GATEWAY_TIMEOUT
 
 
 class HTTPHttpServerVersionNotSupported(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`505`
+    """
     status_code = HTTP_505_HTTP_VERSION_NOT_SUPPORTED
 
 
 class HTTPVariantAlsoNegotiates(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`506`
+    """
     status_code = HTTP_506_VARIANT_ALSO_NEGOTIATES
 
 
 class HTTPInsufficientStorage(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`507`
+    """
     status_code = HTTP_507_INSUFFICIENT_STORAGE
 
 
 class HTTPLoopDetected(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`508`
+    """
     status_code = HTTP_508_LOOP_DETECTED
 
 
 class HTTPNotExtended(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`510`
+    """
     status_code = HTTP_510_NOT_EXTENDED
 
 
 class HTTPNetworkAuthenticationRequired(HTTPServerError):
+    """
+    .. inherits_from:: HTTPClientError
+
+    :ref:`511`
+    """
     status_code = HTTP_511_NETWORK_AUTHENTICATION_REQUIRED
 
 
