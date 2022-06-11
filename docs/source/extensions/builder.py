@@ -61,8 +61,8 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 def add_custom_jinja2(app):
     print(hasattr(app.builder, 'templates'))
     print(app.builder.templates)
-    if not hasattr(app.builder, 'templates'):
-        app.builder.create_template_bridge()
+    #if not hasattr(app.builder, 'templates'):
+    #    app.builder.create_template_bridge()
 
     env = app.builder.templates.environment
     env.tests['prefixedwith'] = str.startswith
