@@ -94,13 +94,13 @@ Installation
 
 To install the sync branch:
 
-.. code-block::
+.. code-block:: sh
 
    pip install arya-api-framework[sync]
 
 To install the async branch:
 
-.. code-block::
+.. code-block:: sh
 
    pip install arya-api-framework[async]
 

@@ -573,6 +573,7 @@ p {
     height: 20px;
     margin: 0;
     display: inline-block;
+    vertical-align: middle;
 }
 
 /* modal stuff */
