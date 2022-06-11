@@ -9,6 +9,7 @@ Basic Models
 ------------
 
 .. attributetable:: BaseModel
+    :inherited: all
 
 .. autoclass:: BaseModel
     :members:

@@ -9,7 +9,7 @@ from yarl import URL
 
 from .utils import chunk_file_reader, sleep_and_retry
 from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, SyncClientError
-from ..framework import ClientInit, Response
+from ..framework import Response
 from ..utils import validate_type
 
 is_sync: bool
@@ -39,7 +39,46 @@ ErrorResponses = Dict[int, Type[BaseModel]]
 SessionT = TypeVar('SessionT', bound='Session')
 
 
-class SyncClient(metaclass=ClientInit):
+class SyncClient:
+    """ The synchronous API client class. Utilizes the :resource:`requests <requests>` module.
+
+    Arguments
+    ---------
+        uri: Optional[:py:class:`str`]
+            The base URI that will prepend all requests made using the client.
+
+            Warning
+            -------
+                This should always either be passed as an argument here or as a subclass argument. If neither are given,
+                an :class:`errors.SyncClientError` exception will be raised.
+
+    Keyword Args
+    ------------
+        headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            The default headers to pass with every request. Can be overridden by individual requests.
+            Defaults to ``None``.
+        cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            The default cookies to pass with every request. Can be overridden by individual requests.
+            Defaults to ``None``.
+        parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+            The default parameters to pass with every request. Can be overridden by individual requests.
+            Defaults to ``None``.
+        error_responses: Optional[:py:class:`dict`]
+            A mapping of :py:class:`int` error codes to :class:`BaseModel` models to use when that error code is
+            received. Defaults to ``None`` and raises default exceptions for error codes.
+        bearer_token: Optional[:py:class:`str`, :pydantic:`pydantic.SecretStr <usage/types/#secret-types>`
+            A ``bearer_token`` that will be sent with requests in the ``Authorization`` header. Defaults to ``None``
+        rate_limit: Optional[:py:class:`int`]
+            The number of requests to allow over :paramref:`rate_limit_interval` seconds. Defaults to ``None``
+        rate_limit_interval: Optional[:py:class:`int`]
+            The period of time, in seconds, over which to apply the rate limit per every :paramref:`rate_limi` requests.
+            Defaults to ``1`` second.
+
+    Attributes
+    ----------
+        uri: :py:class:`str`
+            The base URI that will prepend all requests made using the client.
+    """
 
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
@@ -55,56 +94,56 @@ class SyncClient(metaclass=ClientInit):
     # ---------- Initialization Methods ----------
     def __init__(
             self,
-            *,
-            uri: str = MISSING,
-            headers: Headers = MISSING,
-            cookies: Cookies = MISSING,
-            parameters: Parameters = MISSING,
-            error_responses: ErrorResponses = MISSING,
-            bearer_token: Union[str, SecretStr] = MISSING,
-            rate_limit: Union[int, float] = MISSING,
-            rate_limit_interval: Union[int, float] = MISSING,
+            uri: Optional[str] = None,
+            *args,
+            headers: Optional[Headers] = None,
+            cookies: Optional[Cookies] = None,
+            parameters: Optional[Parameters] = None,
+            error_responses: Optional[ErrorResponses] = None,
+            bearer_token: Optional[Union[str, SecretStr]] = None,
+            rate_limit: Optional[Union[int, float]] = None,
+            rate_limit_interval: Optional[Union[int, float]] = None,
+            **kwargs
     ) -> None:
         if not is_sync:
             raise SyncClientError(
                 "The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`.")
 
-        if uri is not MISSING:
+        if uri:
             if validate_type(uri, str):
                 self._base = URL(uri)
 
-        if self.uri is None:
+        if not self.uri:
             raise SyncClientError(
                 "The client needs a base uri specified. "
                 "This can be done through init parameters, or subclass parameters."
             )
 
-        if cookies is not MISSING:
+        if cookies:
             self._cookies = cookies or {}
-        if parameters is not MISSING:
+        if parameters:
             self._parameters = parameters or {}
 
-        if bearer_token is not None:
+        if bearer_token:
             if validate_type(bearer_token, SecretStr, err=False):
                 bearer_token = bearer_token.get_secret_value()
 
-            if headers is None or headers is MISSING:
+            if not headers:
                 headers = {}
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
-        if headers is not MISSING:
+        if headers:
             self._headers = headers or {}
 
-        if error_responses is not MISSING:
+        if error_responses:
             self.error_responses = error_responses
 
-        if rate_limit is not MISSING:
+        if rate_limit:
             if validate_type(rate_limit, [int, float]):
                 self._rate_limit = rate_limit
-        if rate_limit_interval is not MISSING:
+        if rate_limit_interval:
             if validate_type(rate_limit_interval, [int, float]):
-                print("setting interval")
                 self._rate_limit_interval = rate_limit_interval
 
         if self._rate_limit:
@@ -118,34 +157,41 @@ class SyncClient(metaclass=ClientInit):
         self._session.cookies = cookiejar_from_dict(self.cookies or {})
         self._session.params = self.parameters
 
+        if hasattr(self, '__post_init__'):
+            self.__post_init__(*args, **kwargs)
+
     def __post_init__(self, *args, **kwargs) -> None:
+        """This method is run after the ``__init__`` method is called, and is passed any extra arguments or
+        keyword arguments that the regular init method did not recognize.
+
+        """
         pass
 
     def __init_subclass__(
             cls,
-            uri: str = MISSING,
-            headers: Headers = MISSING,
-            cookies: Cookies = MISSING,
-            parameters: Parameters = MISSING,
-            error_responses: ErrorResponses = MISSING,
-            rate_limit: Union[int, float] = MISSING,
-            rate_limit_interval: Union[int, float] = MISSING
+            uri: Optional[str] = None,
+            headers: Optional[Headers] = None,
+            cookies: Optional[Cookies] = None,
+            parameters: Optional[Parameters] = None,
+            error_responses: Optional[ErrorResponses] = None,
+            rate_limit: Optional[Union[int, float]] = None,
+            rate_limit_interval: Optional[Union[int, float]] = None
     ) -> None:
-        if uri is not MISSING:
+        if uri:
             if validate_type(uri, str):
                 cls._base = URL(uri)
-        if headers is not MISSING:
+        if headers:
             cls._headers = headers
-        if cookies is not MISSING:
+        if cookies:
             cls._cookies = cookies or {}
-        if parameters is not MISSING:
+        if parameters:
             cls._parameters = parameters or {}
-        if error_responses is not MISSING:
+        if error_responses:
             cls._error_responses = error_responses
-        if rate_limit is not MISSING:
+        if rate_limit:
             if validate_type(rate_limit, [int, float]):
                 cls._rate_limit = rate_limit
-        if rate_limit_interval is not MISSING:
+        if rate_limit_interval:
             if validate_type(rate_limit_interval, [int, float]):
                 cls._rate_limit_interval = rate_limit_interval
 

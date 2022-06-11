@@ -126,16 +126,16 @@ class ExternalInheritedClass(SphinxDirective):
     optional_arguments = 0
     option_spec = {
         'objtype': str,
-        'extlink-root': str,
-        'extlink-path': str
+        'root': str,
+        'path': str
     }
 
     def run(self):
         try:
             objtype = self.options['objtype'].strip()
-            form = self.options['extlink-root'].strip()
+            form = self.options['root'].strip()
             form = self.config.extlinks[form]
-            link = form[0] % self.options['extlink-path'].strip()
+            link = form[0] % self.options['path'].strip()
             text = '\n'.join(self.content) if self.content else link
 
         except KeyError as e:

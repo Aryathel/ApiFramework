@@ -1,11 +1,10 @@
 import abc
-from typing import Any, Optional, Union, AbstractSet, Mapping, Dict, Callable, Type
+from typing import Any, Optional, Union, AbstractSet, Mapping, Dict, Callable, Type, List, Set
 from datetime import datetime
 from pathlib import Path
 
-from pydantic import BaseModel as PydBaseModel, Field, Protocol
-
-from .errors import MISSING
+from pydantic import BaseModel as PydBaseModel, Field, Protocol, PrivateAttr
+from pydantic.schema import default_ref_template
 
 
 __all__ = [
@@ -19,40 +18,64 @@ AbstractSetIntStr = AbstractSet[IntStr]
 MappingIntStrAny = Mapping[IntStr, Any]
 DictStrAny = Dict[str, Any]
 
-
-class ClientInit(type):
-    def __call__(cls, *args, **kwargs) -> Any:
-        uri = kwargs.get('uri', MISSING)
-        headers = kwargs.get('headers', MISSING)
-        cookies = kwargs.get('cookies', MISSING)
-        parameters = kwargs.get('parameters', MISSING)
-        error_responses = kwargs.get('error_responses', MISSING)
-        bearer_token = kwargs.get('bearer_token', MISSING)
-        rate_limit = kwargs.get('rate_limit', MISSING)
-        rate_limit_interval = kwargs.get('rate_limit_interval', MISSING)
-
-        obj = type.__call__(
-            cls, uri=uri, headers=headers, cookies=cookies, parameters=parameters,
-            error_responses=error_responses, bearer_token=bearer_token, rate_limit=rate_limit,
-            rate_limit_interval=rate_limit_interval
-        )
-        if hasattr(obj, '__post_init__'):
-            obj.__post_init__(*args, **kwargs)
-        return obj
+MappingOrModel = Union[Dict[str, Union[str, int]], PydBaseModel]
+HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
+Parameters = Union[HttpMapping, PydBaseModel]
+Cookies = MappingOrModel
+Headers = MappingOrModel
+Body = Union[Dict[str, Any], PydBaseModel]
+ErrorResponses = Dict[int, Type[PydBaseModel]]
 
 
 class BaseModel(PydBaseModel):
     """
     .. external_inherits_from::
         :objtype: class
-        :extlink-root: pydantic
-        :extlink-path: usage/models/#basic-model-usage
+        :root: pydantic
+        :path: usage/models/#basic-model-usage
 
         pydantic.BaseModel
 
     These models include data validation on the attributes given to them, and allow for very
     direct control over response formats. Additionally, they allow to easily creating database-like
     structures, and outputting the data ina variety of formats.
+
+    Attributes
+    ----------
+        __fields_set__: :py:class:`set`
+
+            .. external_inherits_from:
+                :objtype: attribute
+                :root: pydantic
+                :link: usage/models/#model-properties
+
+                pydantic.BaseModel.__fields_set__
+
+            A :py:class:`set` of names of fields which were set when the model was initialized.
+        __fields__: :py:class:`dict`
+
+            .. external_inherits_from:
+                :objtype: attribute
+                :root: pydantic
+                :link: usage/models/#model-properties
+
+                pydantic.BaseModel.__fields__
+
+            A :py:class:`dict` of the model's fields.
+        __config__: :pydantic:`pydantic.BaseConfig <usage/model_config/>`
+
+            .. external_inherits_from:
+                :objtype: attribute
+                :root: pydantic
+                :link: usage/models/#model-properties
+
+                pydantic.BaseModel.__config__
+
+            The configuration class for the model.
+
+            Tip
+            ----
+                See :pydantic:`this example <>` for information on how to create the model config.
     """
 
     def dict(
@@ -69,8 +92,8 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: method
-            :extlink-root: pydantic
-            :extlink-path: usage/exporting_models/#modeldict
+            :root: pydantic
+            :path: usage/exporting_models/#modeldict
 
             pydantic.BaseModel.dict
 
@@ -109,8 +132,6 @@ class BaseModel(PydBaseModel):
         -------
             :py:class:`dict`
                 A mapping of :py:class:`str` field names to their values.
-
-        |inherited|
         """
         return super().dict(
             include=include,
@@ -139,8 +160,8 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: method
-            :extlink-root: pydantic
-            :extlink-path: usage/exporting_models/#modeljson
+            :root: pydantic
+            :path: usage/exporting_models/#modeljson
 
             pydantic.BaseModel.json
 
@@ -205,15 +226,13 @@ class BaseModel(PydBaseModel):
         -------
             :py:class:`str`
                 A JSON serialized string.
-
-        |inherited|
         """
         return super().json(
             include=include,
             exclude=exclude,
             by_alias=by_alias,
             skip_defaults=skip_defaults,
-            exlclude_unset=exclude_unset,
+            exclude_unset=exclude_unset,
             exclude_defaults=exclude_defaults,
             exclude_none=exclude_none,
             encoder=encoder,
@@ -232,8 +251,8 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: method
-            :extlink-root: pydantic
-            :extlink-path: usage/exporting_models/#modelcopy
+            :root: pydantic
+            :path: usage/exporting_models/#modelcopy
 
             pydantic.BaseModel.copy
 
@@ -257,8 +276,6 @@ class BaseModel(PydBaseModel):
         -------
             :class:`BaseModel`
                 A copied instance of the model.
-
-        |inherited|
         """
 
         return super().copy(
@@ -273,8 +290,8 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: classmethod
-            :extlink-root: pydantic
-            :extlink-path: usage/models/#helper-functions
+            :root: pydantic
+            :path: usage/models/#helper-functions
 
             pydantic.BaseModel.parse_obj
 
@@ -295,8 +312,6 @@ class BaseModel(PydBaseModel):
         -------
             :class:`BaseModel`
                 An instantiated model from the :paramref:`obj` provided.
-
-        |inherited|
         """
         return super().parse_obj(obj=obj)
 
@@ -313,10 +328,14 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: classmethod
-            :extlink-root: pydantic
-            :extlink-path: usage/models/#helper-functions
+            :root: pydantic
+            :path: usage/models/#helper-functions
 
             pydantic.BaseModel.parse_raw
+
+        Takes a :py:class:`str` or :py:class:`bytes` and parses it to a JSON structure, then passes that to
+        :meth:`parse_obj` to load it into the model. This can also handle loading :py:mod:`pickle` data directly
+        via the :paramref:`content_type` argument.
 
         Arguments
         ---------
@@ -346,16 +365,16 @@ class BaseModel(PydBaseModel):
         Raises
         ------
             ``pydantic.ValidationError``
-                Raised if the :paramref:`b` cannot be used to instantiate the model.
-            :py:class:`RuntimeError`
-                Raised when trying to decode with pickle without setting :paramref:`allow_pickle` to ``True``.
+                Raised if the :paramref:`b` cannot be used to instantiate the model,
+                or if the :paramref:`content_type` is set to ``aplication/pickle`` without setting
+                :paramref:`allow_pickle` to ``True``.
+            :py:class:`pickle.UnpicklingError`
+                Raised when Pickle fails to load an object.
 
         Returns
         -------
             :class:`BaseModel`
                 An instantiated model from the :paramref:`b` provided.
-
-        |inherited|
         """
         return super().parse_raw(
             b=b,
@@ -378,12 +397,52 @@ class BaseModel(PydBaseModel):
         """
         .. external_inherits_from::
             :objtype: classmethod
-            :extlink-root: pydantic
-            :extlink-path: usage/models/#helper-functions
+            :root: pydantic
+            :path: usage/models/#helper-functions
 
             pydantic.BaseModel.parse_file
 
-        |inherited|
+        Takes a file path and parses it to a JSON structure, then passes that to
+        :meth:`parse_raw` to load it into the model. This can also handle loading :py:mod:`pickle` data directly
+        via the :paramref:`content_type` argument.
+
+        Arguments
+        ---------
+            path: Union[:py:class:`str`, :py:class:`pathlib.Path`]
+                A path to a file to load into the model.
+
+        Keyword Args
+        ------------
+            content_type: Optional[:py:class:`str`]
+                The content type of the date in the file at the given :paramref:`path`. Should either be
+                ``application/json`` or ``application/pickle``, if provided. Defaults to ``None``.
+            encoding: Optional[:py:class:`str`]
+                If a :py:class:`bytes` object is passed with a content type of ``json``,
+                it must be decoded using the same method it was encoded in. This defaults to
+                ``utf8``.
+            proto: Optional[``pydantic.Protocol``]
+                Another method of more directly specifying the :paramref:`content_type` of the data passed.
+                This should be ``pydantic.Protocol.json`` or ``pydantic.Protocol.pickle`` if given. Otherwise,
+                if neither the :paramref:`content_type` or this argument are passed, this is defaulted
+                to ``Protocol.json``.
+            allow_pickle: Optional[:py:class:`bool`]
+                Whether or not to allow reading of pickled input. If the :paramref:`content_type` or
+                :paramref:`protocol <proto>` are set to a ``pickle`` data type, this must be set to
+                ``True``. Defaults to ``False``
+
+        Raises
+        ------
+            ``pydantic.ValidationError``
+                Raised if the :paramref:`path` cannot be used to instantiate the model.
+            :py:class:`FileNotFoundError`
+                Raised when the :paramref:`path` provided could not be used to open a file.
+            :py:class:`TypeError`
+                Raised when trying to decode with pickle without setting :paramref:`allow_pickle` to ``True``.
+
+        Returns
+        -------
+            :class:`BaseModel`
+                An instantiated model from the file :paramref:`path`.
         """
         return super().parse_file(
             path=path,
@@ -392,6 +451,165 @@ class BaseModel(PydBaseModel):
             proto=proto,
             allow_pickle=allow_pickle
         )
+
+    @classmethod
+    def from_orm(cls: Type[PydBaseModel], obj: Any) -> PydBaseModel:
+        """
+        .. external_inherits_from::
+            :objtype: classmethod
+            :root: pydantic
+            :path: usage/models/#orm-mode-aka-arbitrary-class-instances
+
+            pydantic.BaseModel.from_orm
+
+        Instantiates the model from a given ORM class using ORM mode.
+
+        Warning
+        -------
+            In order to use :meth:`from_orm`, the config property ``orm_mode`` must be set to ``True``.
+
+        Arguments
+        ---------
+            obj: Any
+                The ORM object to construct the model from.
+
+        Raises
+        ------
+            ``pydantic.ValidationError``
+                Raised if the model could not be instantiated from the given ORM :paramref:`obj`.
+            ``pydantic.ConfigError``
+                Raised when the model does not have the ``orm_mode`` set to ``True`` in the config.
+
+        Returns
+        -------
+            :class:`BaseModel`
+                An instantiated model from the given ORM instance.
+        """
+
+        return super().from_orm(obj=obj)
+
+    @classmethod
+    def schema(cls, by_alias: bool = True, ref_template: str = default_ref_template) -> DictStrAny:
+        """
+        .. external_inherits_from::
+            :objtype: classmethod
+            :root: pydantic
+            :path: usage/schema/
+
+            pydantic.BaseModel.schema
+
+        Converts the model into a dictionary schema.
+
+        Parameters
+        ----------
+            by_alias: Optional[:py:class:`bool`]
+                Whether or not to use aliased names for fields when outputting the data schema. See
+                :pydantic:`this example <usage/models/#reserved-names>` for creating field aliases.
+                Defaults to ``True``.
+            ref_template: Optional[:py:class:`str`]
+                The string template to use when outputting sub-models to the schema. The template should include
+                ``{model}`` somewhere in it as a placeholder for the name of the sub-model. Defaults to
+                ``#/definitions/{model}``.
+
+                Note
+                ----
+                    When outputting the schema structure, all sub-models of the model will be output under the
+                    top-level JSON key ``definitions``, and then referenced using the :paramref:`ref_template` template
+                    provided inside the parent model.
+
+        Returns
+        -------
+            :py:class:`dict`
+                The model represented as a python dictionary.
+        """
+        return super().schema(
+            by_alias=by_alias,
+            ref_template=ref_template
+        )
+
+    @classmethod
+    def schema_json(
+            cls,
+            *,
+            by_alias: bool = True,
+            ref_template: str = default_ref_template,
+            **dumps_kwargs: Any
+    ) -> str:
+        """
+        .. external_inherits_from::
+            :objtype: classmethod
+            :root: pydantic
+            :path: usage/schema/
+
+            pydantic.BaseMode.schema_json
+
+        Converts the model to a JSON serialized string.
+
+        Tip
+        ----
+            Any extra keyword arguments passed to this method will be given to the :py:func:`json.dumps` function
+            as keyword arguments. Using this, for example, means that you could pass the ``index`` argument,
+            and cause the output string to be pretty-printed with indentation.
+
+        Keyword Args
+        ------------
+            by_alias: Optional[:py:class:`bool`]
+                Whether or not to use aliased names for fields when outputting the data schema. See
+                :pydantic:`this example <usage/models/#reserved-names>` for creating field aliases.
+                Defaults to ``True``.
+            ref_template: Optional[:py:class:`str`]
+                The string template to use when outputting sub-models to the schema. The template should include
+                ``{model}`` somewhere in it as a placeholder for the name of the sub-model. Defaults to
+                ``#/definitions/{model}``.
+
+                Note
+                ----
+                    When outputting the schema structure, all sub-models of the model will be output under the
+                    top-level JSON key ``definitions``, and then referenced using the :paramref:`ref_template` template
+                    provided inside the parent model.
+
+        Returns
+        -------
+            :py:class:`str`
+                A JSON serialized :py:class:`str` containing the model schema.
+        """
+        return super().schema_json(by_alias=by_alias, ref_template=ref_template, **dumps_kwargs)
+
+    @classmethod
+    def construct(cls: Type[PydBaseModel], _fields_set: Optional[Set[str]] = None, **values: Any) -> PydBaseModel:
+        """
+        .. external_inherits_from::
+            :objtype: classmethod
+            :root: pydantic
+            :path: usage/models/#creating-models-without-validation
+
+            pydantic.BaseMode.construct
+
+        Creates the model without running any validation. This can come in handy for slightly more performant code
+        when creating models with data that has already been validated. Using :meth:`construct` is usually around
+        ``30x`` faster than creating a model with complete validation. See an example
+        :pydantic:`here <usage/models/#creating-models-without-validation>`.
+
+        Warning
+        -------
+            This method is capable of creating `invalid` data in the model, so it should only be used if the data
+            has already been validated, or comes from another trusted source.
+
+        Arguments
+        ---------
+            _fields_set: Optional[:py:class:`set`]
+                A :py:class:`set` of :py:class:`str` field names to pass to the model's :attr:`__fields_set__`
+                attribute.
+            **kwargs
+                Any other keyword arguments given to the method will be processed as field names.
+
+                Tip
+                ----
+                    In many cases, you will likely have a :py:class:`dict` that you want to pass, and you can do so by
+                    using ``BaseModel.construct(**my_dict)``. To create a model from another model, you can use
+                    ``BaseModel.construct(**model_instance.dict())``.
+        """
+        return super().construct(_fields_set=_fields_set, **values)
 
 
 class Response(BaseModel, abc.ABC):
@@ -425,11 +643,16 @@ class Response(BaseModel, abc.ABC):
                 "last_name": "Last"
             }
 
+    Note
+    ----
+        The :attr:`uri` and :attr:`time` attributes of this response method will not be included in any output methods
+        for the model. They are purely intended for programmatic usage.
+
     Attributes
     -----------
-        request_base_: Optional[:py:class:`str`]
+        uri: Optional[:py:class:`str`]
             The url of the original request this is holding the response to.
-        request_received_at_: Optional[:py:class:`datetime.datetime`] = :py:meth:`datetime.datetime.utcnow`
+        time: :py:class:`datetime.datetime`
             The datetime that the response was received at.
 
     Note
@@ -438,8 +661,16 @@ class Response(BaseModel, abc.ABC):
         The default implementation is a timezone-aware UTC datetime.
     """
 
-    request_base_: Optional[str] = None
-    request_received_at_: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    _request_base: Optional[str] = PrivateAttr(default="")
+    _request_received_at: Optional[datetime] = PrivateAttr(default_factory=datetime.utcnow)
+
+    @property
+    def uri(self) -> str:
+        return self._request_base
+
+    @property
+    def time(self) -> datetime:
+        return self._request_received_at
 
 
 class PaginatedResponse(Response, abc.ABC):

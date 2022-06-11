@@ -33,12 +33,13 @@ Getting Started
 API Reference
 --------------
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   sync_framework
-   async_framework
-   utils
-   models
+    sync_framework
+    async_framework
+    models
+    utils
+    exceptions
 
 Stuck?
 ------

@@ -101,16 +101,6 @@ rst_prolog = """
 .. |deco| replace:: This function is a decorator*.
 """
 
-# This is really hacky, but this allows me to do some stuff by
-# adding "|inherited|" to the end of a docstring to make it appear
-# with the "(inherited)" qualifier in an attribute table.
-rst_epilog = """
-.. role:: raw-html(raw)
-    :format: html
-
-.. |inherited| replace:: :raw-html:`<div style="display: none;" hidden></div>`
-"""
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".

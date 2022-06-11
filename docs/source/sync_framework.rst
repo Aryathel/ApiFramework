@@ -3,5 +3,8 @@
 Sync Client
 ============================================
 
+.. attributetable:: SyncClient
+
 .. autoclass:: SyncClient
-   :members:
+    :members:
+    :special-members: __post_init__

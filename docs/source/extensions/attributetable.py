@@ -86,7 +86,7 @@ class PyAttributeTable(SphinxDirective):
     required_arguments = 1
     optional_arguments = 2
     final_argument_whitespace = False
-    option_spec = {}
+    option_spec = {"inherited": str}
 
     def parse_name(self, content):
         path, name = _name_parser_regex.match(content).groups()
@@ -126,6 +126,13 @@ class PyAttributeTable(SphinxDirective):
         and parsed, it'll need to be done at a different stage and then
         replaced.
         """
+        inherited = self.options.get('inherited', "")
+        if isinstance(inherited, list):
+            raise ValueError('A single string argument is required for attributetable.inherited argument.')
+        if inherited.strip() == "all":
+            inherited = True
+        else:
+            inherited = [opt.strip() for opt in inherited.split(',')]
         nodes = []
         parent = None
         for arg in self.arguments:
@@ -136,6 +143,7 @@ class PyAttributeTable(SphinxDirective):
             node['python-module'] = modulename
             node['python-class'] = name
             node['python-full-name'] = f'{modulename}.{name}'
+            node['python-inherited'] = inherited
             if not parent:
                 parent = node['python-full-name']
             node['python-parent-name'] = parent
@@ -177,8 +185,8 @@ def process_attributetable(app, doctree, fromdocname):
     node_list = doctree.traverse(attributetableplaceholder)
     for node in node_list:
         modulename, classname, fullname = node['python-module'], node['python-class'], node['python-full-name']
-        parent = node['python-parent-name']
-        groups = get_class_results(lookup, modulename, classname, fullname, parent == fullname)
+        parent, inherited = node['python-parent-name'], node['python-inherited']
+        groups = get_class_results(lookup, modulename, classname, fullname, parent == fullname, inherited)
         if parent in grouped:
             grouped[parent] = merge_groups(grouped[parent], groups)
             continue
@@ -221,7 +229,7 @@ def merge_groups(group1: OrderedDict, group2: OrderedDict) -> OrderedDict:
     return group
 
 
-def get_class_results(lookup, modulename, name, fullname, is_parent):
+def get_class_results(lookup, modulename, name, fullname, is_parent, inherited):
     module = importlib.import_module(modulename)
     cls = getattr(module, name)
     groups = OrderedDict([
@@ -245,12 +253,10 @@ def get_class_results(lookup, modulename, name, fullname, is_parent):
             if value is not None:
                 break
 
-        override = False
+        override = attr in inherited if not type(inherited) == bool else inherited
+
         if value is not None:
             doc = value.__doc__ or ''
-
-            if doc.strip().endswith('|inherited|'):
-                override = True
             if inspect.iscoroutinefunction(value) or doc.startswith('|coro|'):
                 key = _('Methods')
                 badge = attributetablebadge(

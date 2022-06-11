@@ -8,7 +8,7 @@ from pydantic import BaseModel, parse_obj_as, SecretStr, validate_arguments
 from yarl import URL
 
 from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, AsyncClientError
-from ..framework import ClientInit, Response
+from ..framework import Response
 from ..utils import validate_type
 from .utils import chunk_file_reader, merge_params
 
@@ -39,7 +39,7 @@ ErrorResponses = Dict[int, Type[BaseModel]]
 ClientSessionT = TypeVar('ClientSessionT', bound='ClientSession')
 
 
-class AsyncClient(metaclass=ClientInit):
+class AsyncClient:
     """The basic Client implementation that all API clients inherit from."""
 
     _headers: Optional[Headers] = None
@@ -56,20 +56,20 @@ class AsyncClient(metaclass=ClientInit):
     # ---------- Initialization Methods ----------
     def __init__(
             self,
+            uri: Optional[str] = None,
             *,
-            uri: str = MISSING,
-            headers: Headers = MISSING,
-            cookies: Cookies = MISSING,
-            parameters: Parameters = MISSING,
-            error_responses: ErrorResponses = MISSING,
-            bearer_token: Union[str, SecretStr] = MISSING,
-            rate_limit: Union[int, float] = MISSING,
-            rate_limit_interval: Union[int, float] = MISSING
+            headers: Optional[Headers] = None,
+            cookies: Optional[Cookies] = None,
+            parameters: Optional[Parameters] = None,
+            error_responses: Optional[ErrorResponses] = None,
+            bearer_token: Optional[Union[str, SecretStr]] = None,
+            rate_limit: Optional[Union[int, float]] = None,
+            rate_limit_interval: Optional[Union[int, float]] = None
     ) -> None:
         if not is_async:
             raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
 
-        if uri is not MISSING:
+        if uri:
             if not isinstance(uri, str):
                 raise ValueError("The uri should be a string.")
             self._base = URL(uri)
@@ -80,29 +80,29 @@ class AsyncClient(metaclass=ClientInit):
                 "This can be done through init parameters, or subclass parameters."
             )
 
-        if bearer_token is not None:
+        if bearer_token:
             if isinstance(bearer_token, SecretStr):
                 bearer_token = bearer_token.get_secret_value()
 
-            if headers is None or headers is MISSING:
+            if not headers:
                 headers = {}
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
-        if headers is not MISSING:
+        if headers:
             self._headers = headers or {}
-        if cookies is not MISSING:
+        if cookies:
             self._cookies = cookies or {}
-        if parameters is not MISSING:
+        if parameters:
             self._parameters = parameters or {}
 
-        if error_responses is not MISSING:
+        if error_responses:
             self._error_responses = error_responses
 
-        if rate_limit is not MISSING:
+        if rate_limit:
             if validate_type(rate_limit, [int, float]):
                 self._rate_limit = rate_limit
-        if rate_limit_interval is not MISSING:
+        if rate_limit_interval:
             if validate_type(rate_limit_interval, [int, float]):
                 self._rate_limit_interval = rate_limit_interval
 
@@ -120,30 +120,30 @@ class AsyncClient(metaclass=ClientInit):
 
     def __init_subclass__(
             cls,
-            uri: str = MISSING,
-            headers: Headers = MISSING,
-            cookies: Cookies = MISSING,
-            parameters: Parameters = MISSING,
-            error_responses: ErrorResponses = MISSING,
-            rate_limit: Union[int, float] = MISSING,
-            rate_limit_interval: Union[int, float] = MISSING
+            uri: Optional[str] = None,
+            headers: Optional[Headers] = None,
+            cookies: Optional[Cookies] = None,
+            parameters: Optional[Parameters] = None,
+            error_responses: Optional[ErrorResponses] = None,
+            rate_limit: Optional[Union[int, float]] = None,
+            rate_limit_interval: Optional[Union[int, float]] = None
     ) -> None:
-        if uri is not MISSING:
+        if uri:
             if not isinstance(uri, str):
                 raise ValueError("The uri should be a string.")
             cls._base = URL(uri)
-        if headers is not MISSING:
+        if headers:
             cls._headers = headers
-        if cookies is not MISSING:
+        if cookies:
             cls._cookies = cookies or {}
-        if parameters is not MISSING:
+        if parameters:
             cls._parameters = parameters or {}
-        if error_responses is not MISSING:
+        if error_responses:
             cls._error_responses = error_responses
-        if rate_limit is not MISSING:
+        if rate_limit:
             if validate_type(rate_limit, [int, float]):
                 cls._rate_limit = rate_limit
-        if rate_limit_interval is not MISSING:
+        if rate_limit_interval:
             if validate_type(rate_limit_interval, [int, float]):
                 cls._rate_limit_interval = rate_limit_interval
 
