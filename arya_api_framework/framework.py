@@ -653,11 +653,11 @@ class Response(BaseModel, abc.ABC):
         uri: Optional[:py:class:`str`]
             The url of the original request this is holding the response to.
         time: :py:class:`datetime.datetime`
-            The datetime that the response was received at.
+            The time that the response was received at.
 
     Note
     ----
-        The :paramref:`request_received_at_ <Request.request_received_at_>` attribute is set by default when a Response is created.
+        The :attr:`uri` and :attr:`time` properties are set by default when a :class:`Response` is created.
         The default implementation is a timezone-aware UTC datetime.
     """
 
