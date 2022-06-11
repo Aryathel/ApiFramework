@@ -355,10 +355,6 @@ class BaseModel(PydBaseModel):
             :class:`BaseModel`
                 An instantiated model from the :paramref:`b` provided.
 
-        Returns
-        -------
-
-
         |inherited|
         """
         return super().parse_raw(

@@ -2,8 +2,6 @@ from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.environment.adapters.indexentries import IndexEntries
 from sphinx.writers.html5 import HTML5Translator
 
-from sphinx.builders.latex import LaTeXBuilder
-
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -59,10 +57,6 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 
 
 def add_custom_jinja2(app):
-    print(app.builder)
-    #if not hasattr(app.builder, 'templates'):
-    #    app.builder.create_template_bridge()
-
     env = app.builder.templates.environment
     env.tests['prefixedwith'] = str.startswith
     env.tests['suffixedwith'] = str.endswith
@@ -74,20 +68,15 @@ def add_builders(app):
     app.add_builder(DPYStandaloneHTMLBuilder, override=True)
 
     try:
-        print(app.registry.builders)
         original = app.registry.builders['readthedocs']
-        print(original.mro())
     except KeyError:
         pass
     else:
         injected_mro = tuple(base if base is not StandaloneHTMLBuilder else DPYStandaloneHTMLBuilder
                              for base in original.mro()[1:])
-        print(injected_mro)
         new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
-        print(new_builder, new_builder.__bases__)
         app.set_translator('readthedocs', DPYHTML5Translator, override=True)
         app.add_builder(new_builder, override=True)
-        print(app.registry.builders)
 
 
 def setup(app):

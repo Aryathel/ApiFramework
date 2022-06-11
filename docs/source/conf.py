@@ -137,12 +137,12 @@ html_theme_options = {
 
 
 def _i18n_warning_filter(record: logging.LogRecord) -> bool:
-  return not record.msg.startswith(
-    (
-      'inconsistent references in translated message',
-      'inconsistent term references in translated message',
+    return not record.msg.startswith(
+        (
+            'inconsistent references in translated message',
+            'inconsistent term references in translated message',
+        )
     )
-  )
 
 
 _i18n_logger = logging.getLogger('sphinx')
