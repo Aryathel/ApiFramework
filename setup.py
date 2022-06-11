@@ -1,9 +1,11 @@
 from setuptools import setup
 import pathlib
 
+# Build with: python -m build && python -m twine upload --repository pypi dist/*
+
 here = pathlib.Path(__file__).parent.resolve()
 
-long_description = (here / "README.md").read_text(encoding="utf-8")
+long_description = (here / "README.rst").read_text(encoding="utf-8")
 
 requirements = [
     "pydantic>=1.9.1",
@@ -29,11 +31,12 @@ packages = [
 
 setup(
     name="arya-api-framework",
-    version="0.1.6",
+    version="0.1.7",
     description="A simple API framework used in many other API clients I create.",
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     url="https://github.com/Aryathel/ApiFramework",
+    project_urls={'Documentation': 'https://apiframework.readthedocs.io/en/latest/'},
     author="Aryathel",
     license="MIT",
     classifiers=[
