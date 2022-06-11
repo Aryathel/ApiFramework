@@ -59,8 +59,7 @@ class DPYStandaloneHTMLBuilder(StandaloneHTMLBuilder):
 
 
 def add_custom_jinja2(app):
-    print(hasattr(app.builder, 'templates'))
-    print(app.builder.templates)
+    print(app.builder)
     #if not hasattr(app.builder, 'templates'):
     #    app.builder.create_template_bridge()
 
@@ -74,18 +73,19 @@ def add_builders(app):
     app.set_translator('html', DPYHTML5Translator, override=True)
     app.add_builder(DPYStandaloneHTMLBuilder, override=True)
 
-    #try:
-    #    original = app.registry.builders['readthedocs']
-    #except KeyError:
-    #    pass
-    #else:
-    #    injected_mro = tuple(base if base is not StandaloneHTMLBuilder else DPYStandaloneHTMLBuilder
-    #                         for base in original.mro()[1:])
-    #    print(injected_mro)
-    #    new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
-    #    print(new_builder, new_builder.__bases__)
-    #    app.set_translator('readthedocs', DPYHTML5Translator, override=True)
-    #    app.add_builder(new_builder, override=True)
+    try:
+        original = app.registry.builders['readthedocs']
+        print(original.mro())
+    except KeyError:
+        pass
+    else:
+        injected_mro = tuple(base if base is not StandaloneHTMLBuilder else DPYStandaloneHTMLBuilder
+                             for base in original.mro()[1:])
+        print(injected_mro)
+        new_builder = type(original.__name__, injected_mro, {'name': 'readthedocs'})
+        print(new_builder, new_builder.__bases__)
+        app.set_translator('readthedocs', DPYHTML5Translator, override=True)
+        app.add_builder(new_builder, override=True)
 
 
 def setup(app):
