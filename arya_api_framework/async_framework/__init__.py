@@ -1,33 +1,82 @@
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: A RESTful API client for asynchronous API applications.
+"""
+
+# Stdlib modules
 import logging
-from datetime import timedelta, datetime
-from typing import Any, Optional, Type, TypeVar, Union, Dict, List
+from datetime import (
+    datetime,
+    timedelta,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 from json import JSONDecodeError
 
+# 3rd party modules
 from multidict import CIMultiDict
-from pydantic import BaseModel, parse_obj_as, SecretStr, validate_arguments
+from pydantic import (
+    BaseModel,
+    SecretStr,
+)
+from pydantic import (
+    parse_obj_as,
+    validate_arguments,
+)
 from yarl import URL
 
-from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, AsyncClientError
+# Local modules
+from ..errors import (
+    AsyncClientError,
+    ERROR_RESPONSE_MAPPING,
+    HTTPError,
+    MISSING,
+    ResponseParseError,
+)
 from ..framework import Response
 from ..utils import validate_type
-from .utils import chunk_file_reader, merge_params
+from .utils import (
+    chunk_file_reader,
+    merge_params,
+)
 
+# Async modules
 is_async: bool
 try:
-    import asyncio
-    from aiohttp import ClientSession, ClientTimeout
+    from aiohttp import (
+        ClientSession,
+        ClientTimeout,
+    )
     from aiolimiter import AsyncLimiter
+    import asyncio
 
     is_async = True
 except ImportError:
     is_async = False
 
+# Define exposed objects
 __all__ = [
     "AsyncClient"
 ]
 
+
+# ======================
+#     Logging Setup
+# ======================
 _log: logging.Logger = logging.getLogger("arya_api_framework.Async")
 
+
+# ======================
+#        Typing
+# ======================
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
@@ -35,13 +84,18 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Dict[str, Any], BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
-
 ClientSessionT = TypeVar('ClientSessionT', bound='ClientSession')
 
 
+# ======================
+#     Async Client
+# ======================
 class AsyncClient:
-    """The basic Client implementation that all API clients inherit from."""
+    """The basic client implementation that all API clients inherit from."""
 
+    # ======================
+    #   Private Attributes
+    # ======================
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
     _parameters: Optional[Parameters] = None
@@ -53,7 +107,9 @@ class AsyncClient:
     _base: Optional[URL] = MISSING
     _session: ClientSessionT
 
-    # ---------- Initialization Methods ----------
+    # ======================
+    #    Initialization
+    # ======================
     def __init__(
             self,
             uri: Optional[str] = None,
@@ -147,7 +203,9 @@ class AsyncClient:
             if validate_type(rate_limit_interval, [int, float]):
                 cls._rate_limit_interval = rate_limit_interval
 
-    # ---------- URI Options ----------
+    # ======================
+    #      Properties
+    # ======================
     @property
     def uri(self) -> Optional[str]:
         return str(self._base) if self._base is not MISSING else None
@@ -202,7 +260,9 @@ class AsyncClient:
         if error_responses is not MISSING:
             self._error_responses = error_responses
 
-    # ---------- Request Methods ----------
+    # ======================
+    #    Request Methods
+    # ======================
     @validate_arguments()
     async def request(
             self,
@@ -256,7 +316,7 @@ class AsyncClient:
 
                 return response_json
 
-            error_class = error_response_mapping.get(response.status, HTTPError)
+            error_class = ERROR_RESPONSE_MAPPING.get(response.status, HTTPError)
             error_response_model = error_responses.get(response.status)
 
             try:
@@ -449,10 +509,15 @@ class AsyncClient:
             error_responses=error_responses,
         )
 
+    # ======================
+    #    General methods
+    # ======================
     async def close(self):
         await self._session.close()
 
-    # ---------- Class Methods ----------
+    # ======================
+    #     Classmethods
+    # ======================
     @classmethod
     @validate_arguments()
     def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:

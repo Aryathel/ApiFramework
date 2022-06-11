@@ -41,6 +41,15 @@ API Reference
     utils
     exceptions
 
+Information
+-----------
+Check this out! :ref:`500`
+
+.. toctree::
+    :maxdepth: 2
+
+    statuses
+
 Stuck?
 ------
 If you are struggling to find specific information, see these references:

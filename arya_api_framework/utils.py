@@ -1,10 +1,32 @@
-from typing import Any, Union, List, Type
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: Standalone functions created for general purpose use throughout the rest of the program.
+"""
 
+# Stdlib modules
+from typing import (
+    Any,
+    List,
+    Type,
+    Union,
+)
+
+# 3rd party modules
 from pydantic import validate_arguments
 
+# Local modules
 from .errors import ValidationError
 
+# Define exposed objects
+__all__ = [
+    "validate_type",
+]
 
+
+# ======================
+#    Type Validation
+# ======================
 @validate_arguments()
 def validate_type(obj: Any, target: Union[Type, List[Type]], err: bool = True) -> bool:
     """Validates that a given parameter is of a type, or is one of a collection of types.

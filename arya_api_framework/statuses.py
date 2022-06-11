@@ -1,3 +1,12 @@
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: A list of constants representing status code responses.
+"""
+
+# ======================
+#     Status Codes
+# ======================
 HTTP_100_CONTINUE = 100
 HTTP_101_SWITCHING_PROTOCOLS = 101
 HTTP_102_PROCESSING = 102

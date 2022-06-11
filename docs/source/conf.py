@@ -39,11 +39,12 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx_paramlinks',
     'sphinxcontrib_trio',
+    'sphinx_toolbox.code',
     'details',
     'exception_hierarchy',
     'attributetable',
     'resourcelinks',
-    'nitpick_file_ignorer'
+    'nitpick_file_ignorer',
 ]
 
 # Autodoc settings
@@ -58,6 +59,7 @@ intersphinx_mapping = {
 # External links
 extlinks = {
     'pydantic': ('https://pydantic-docs.helpmanual.io/%s', '%s'),
+    'httpcode': ('https://www.rfc-editor.org/rfc/rfc9110.html#%s', '%s')
 }
 
 # Napoleon settings
@@ -91,6 +93,7 @@ resource_links = {
     'requests': 'https://requests.readthedocs.io/en/latest/',
     'pydantic': 'https://pydantic-docs.helpmanual.io/',
     'postmanecho': 'https://www.postman-echo.com/',
+    'ratelimit': 'https://pypi.org/project/ratelimit/'
 }
 
 rst_prolog = """

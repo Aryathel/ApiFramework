@@ -1,17 +1,42 @@
-from typing import Union, Optional, Dict, Mapping, List
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: Utility functions for general use within the async branch.
+"""
+
+# Stdlib modules
 from collections import OrderedDict
 from pathlib import Path
+from typing import (
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Union,
+)
 
+# Local modules
 from ..errors import AsyncClientError
 
+# Async modules
 is_async: bool
 try:
     import aiofiles
+
     is_async = True
 except ImportError:
     is_async = False
 
+# Define exposed objects
+__all__ = [
+    'chunk_file_reader',
+    'merge_params'
+]
 
+
+# ======================
+#       Methods
+# ======================
 async def chunk_file_reader(file: Union[str, Path]):
     if not is_async:
         raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")

@@ -1,33 +1,75 @@
-from datetime import datetime, timedelta
-import logging
-from json import JSONDecodeError
-from typing import Any, Optional, Type, TypeVar, Union, Dict, List
-import time
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: A RESTful API client for synchronous API applications.
+"""
 
-from pydantic import BaseModel, parse_obj_as, SecretStr, validate_arguments
+# Stdlib modules
+from datetime import datetime
+from json import JSONDecodeError
+import logging
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
+
+# 3rd party modules
+from pydantic import (
+    BaseModel,
+    SecretStr,
+)
+from pydantic import (
+    parse_obj_as,
+    validate_arguments,
+)
 from yarl import URL
 
-from .utils import chunk_file_reader, sleep_and_retry
-from ..errors import HTTPError, ResponseParseError, error_response_mapping, MISSING, SyncClientError
+# Local modules
+from ..errors import (
+    ERROR_RESPONSE_MAPPING,
+    HTTPError,
+    MISSING,
+    ResponseParseError,
+    SyncClientError,
+)
 from ..framework import Response
 from ..utils import validate_type
+from .utils import (
+    chunk_file_reader,
+    sleep_and_retry,
+)
 
+# Sync modules
 is_sync: bool
 try:
+    from ratelimit import limits
     from requests import Session
     from requests.cookies import cookiejar_from_dict
-    from ratelimit import limits
 
     is_sync = True
 except ImportError:
     is_sync = False
 
+# Define exposed objects
 __all__ = [
     "SyncClient"
 ]
 
+
+# ======================
+#     Logging Setup
+# ======================
 _log: logging.Logger = logging.getLogger("arya_api_framework.Sync")
 
+
+# ======================
+#        Typing
+# ======================
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
@@ -35,10 +77,12 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Dict[str, Any], BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
-
 SessionT = TypeVar('SessionT', bound='Session')
 
 
+# ======================
+#     Sync Client
+# ======================
 class SyncClient:
     """ The synchronous API client class. Utilizes the :resource:`requests <requests>` module.
 
@@ -80,6 +124,9 @@ class SyncClient:
             The base URI that will prepend all requests made using the client.
     """
 
+    # ======================
+    #   Private Attributes
+    # ======================
     _headers: Optional[Headers] = None
     _cookies: Optional[Cookies] = None
     _parameters: Optional[Parameters] = None
@@ -91,7 +138,9 @@ class SyncClient:
     _base: Optional[URL] = MISSING
     _session: SessionT
 
-    # ---------- Initialization Methods ----------
+    # ======================
+    #    Initialization
+    # ======================
     def __init__(
             self,
             uri: Optional[str] = None,
@@ -195,7 +244,10 @@ class SyncClient:
             if validate_type(rate_limit_interval, [int, float]):
                 cls._rate_limit_interval = rate_limit_interval
 
-    # ---------- URI Options ----------
+    # ======================
+    #      Properties
+    # ======================
+    # URI Options
     @property
     def uri(self) -> Optional[str]:
         return str(self._base) if self._base is not MISSING else None
@@ -208,7 +260,7 @@ class SyncClient:
     def uri_rel(self) -> Optional[str]:
         return str(self._base.relative()) if self._base is not MISSING else None
 
-    # ---------- Default Request Settings ----------
+    # Default Request Settings
     @property
     def headers(self) -> Optional[Headers]:
         return self._headers
@@ -246,7 +298,9 @@ class SyncClient:
         if error_responses is not MISSING:
             self._error_responses = error_responses
 
-    # ---------- Request Methods ----------
+    # ======================
+    #    Request Methods
+    # ======================
     @validate_arguments()
     def request(
             self,
@@ -294,7 +348,7 @@ class SyncClient:
 
                 return response_json
 
-            error_class = error_response_mapping.get(response.status_code, HTTPError)
+            error_class = ERROR_RESPONSE_MAPPING.get(response.status_code, HTTPError)
             error_response_model = error_responses.get(response.status_code)
 
             try:
@@ -486,10 +540,15 @@ class SyncClient:
             error_responses=error_responses,
         )
 
+    # ======================
+    #    General methods
+    # ======================
     def close(self):
         self._session.close()
 
-    # ---------- Class Methods ----------
+    # ======================
+    #     Classmethods
+    # ======================
     @classmethod
     @validate_arguments()
     def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:

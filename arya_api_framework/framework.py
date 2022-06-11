@@ -1,9 +1,32 @@
+"""
+Author: Arya Mayfield
+Date: June 2022
+Description: Models used for the main structure of the module.
+"""
+
+# Stdlib modules
 import abc
-from typing import Any, Optional, Union, AbstractSet, Mapping, Dict, Callable, Type, List, Set
 from datetime import datetime
 from pathlib import Path
+from typing import (
+    AbstractSet,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Type,
+    Union,
+)
 
-from pydantic import BaseModel as PydBaseModel, Field, Protocol, PrivateAttr
+# 3rd party modules
+from pydantic import (
+    BaseModel as PydBaseModel,
+    PrivateAttr,
+    Protocol,
+)
 from pydantic.schema import default_ref_template
 
 
@@ -12,6 +35,9 @@ __all__ = [
     'PaginatedResponse'
 ]
 
+# ======================
+#       Typing
+# ======================
 StrBytes = Union[str, bytes]
 IntStr = Union[int, str]
 AbstractSetIntStr = AbstractSet[IntStr]
@@ -27,6 +53,12 @@ Body = Union[Dict[str, Any], PydBaseModel]
 ErrorResponses = Dict[int, Type[PydBaseModel]]
 
 
+# ======================
+#     Basic Model
+# ======================
+# This only exists for the purpose of documentation
+# since the Pydantic docs are not compatible with Sphinx.
+# ======================
 class BaseModel(PydBaseModel):
     """
     .. external_inherits_from::
@@ -612,6 +644,9 @@ class BaseModel(PydBaseModel):
         return super().construct(_fields_set=_fields_set, **values)
 
 
+# ======================
+#    Request Models
+# ======================
 class Response(BaseModel, abc.ABC):
     """
     .. inherits_from:: BaseModel
