@@ -4,83 +4,74 @@ Arya's API Framework
 .. only:: html
 
     .. list-table::
-            :stub-columns: 1
-            :widths: 10 90
+        :stub-columns: 1
+        :widths: 10 90
 
-            * - Docs
-              - |docs|
-            * - PyPI
-              - |pypi-version| |supported-versions| |supported-implementations| |wheel|
-            * - Activity
-              - |commits-latest| |maintained| |pypi-downloads|
-            * - QA
-              - |codefactor|
-            * - Other
-              - |license| |language| |requires|
+        * - Docs
+          - |docs|
+        * - PyPI
+          - |pypi-version| |supported-versions| |supported-implementations| |wheel|
+        * - Activity
+          - |commits-latest| |maintained| |pypi-downloads|
+        * - QA
+          - |codefactor|
+        * - Other
+          - |license| |language|
 
-    .. |docs| rtfd-shield::
-        :class: shield
-        :project: apiframework
-        :alt: Documentation Build Status
+.. |docs| image:: https://img.shields.io/readthedocs/apiframework/latest?logo=read-the-docs&color=purple&logoColor=white
+    :class: shield
+    :target: https://apiframework.readthedocs.io/en/latest/
+    :alt: RTFD - Docs Build Status
 
-    .. |requires| image:: https://dependency-dash.herokuapp.com/github/Aryathel/ApiFramework/badge.svg
-        :class: shield
-        :target: https://dependency-dash.herokuapp.com/github/Aryathel/APIFramework/
-        :alt: Requirements Status
+.. |pypi-version| image:: https://img.shields.io/pypi/v/arya-api-framework?color=purple
+    :class: shield
+    :target: https://pypi.org/project/arya-api-framework/
+    :alt: PyPI - Package Version
 
-    .. |codefactor| codefactor-shield::
-        :alt: CodeFactor Grade
-        :class: shield
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/arya-api-framework?logo=python&logoColor=white&color=purple
+    :class: shield
+    :target: https://pypi.org/project/arya-api-framework/
+    :alt: PyPI - Supported Python Versions
 
-    .. |pypi-version| pypi-shield::
-        :class: shield
-        :project: arya-api-framework
-        :version:
-        :alt: PyPI - Package Version
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/arya-api-framework?color=purple
+    :class: shield
+    :target: https://pypi.org/project/arya-api-framework/
+    :alt: PyPI - Supported Implementations
 
-    .. |supported-versions| pypi-shield::
-        :class: shield
-        :project: arya-api-framework
-        :py-versions:
-        :alt: PyPI - Supported Python Versions
+.. |wheel| image:: https://img.shields.io/pypi/wheel/arya-api-framework?color=purple
+    :class: shield
+    :target: https://pypi.org/project/arya-api-framework/
+    :alt: PyPI - Wheel
 
-    .. |supported-implementations| pypi-shield::
-        :class: shield
-        :project: arya-api-framework
-        :implementations:
-        :alt: PyPI - Supported Implementations
+.. |commits-latest| image:: https://img.shields.io/github/last-commit/Aryathel/ApiFramework/main?color=purple
+    :class: shield
+    :target: https://github.com/Aryathel/APIFramework
+    :alt: Github - Last Commit
 
-    .. |wheel| pypi-shield::
-        :class: shield
-        :project: arya-api-framework
-        :wheel:
-        :alt: PyPI - Wheel
+.. |maintained| image:: https://img.shields.io/maintenance/yes/2022?color=purple
+    :class: shield
+    :target: https://github.com/Aryathel/APIFramework/commit/main
+    :alt: Maintenance
 
-    .. |license| github-shield::
-        :class: shield
-        :license:
-        :alt: License
+.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/arya-api-framework?color=purple
+    :class: shield
+    :target: https://pypistats.org/packages/arya-api-framework
+    :alt: PyPI - Downloads
 
-    .. |language| github-shield::
-        :class: shield
-        :top-language:
-        :alt: GitHub top language
+.. |codefactor| image:: https://img.shields.io/codefactor/grade/github/Aryathel/ApiFramework?logo=codefactor&color=purple&logoColor=white
+    :class: shield
+    :target: https://www.codefactor.io/repository/github/Aryathel/ApiFramework
+    :alt: CodeFactor - Grade
 
-    .. |commits-latest| github-shield::
-        :class: shield
-        :last-commit:
-        :branch: main
-        :alt: GitHub last commit
+.. |license| image:: https://img.shields.io/github/license/Aryathel/ApiFramework?color=purple
+    :class: shield
+    :target: https://github.com/Aryathel/ApiFramework/blob/main/LICENSE
+    :alt: GitHub - License
 
-    .. |maintained| maintained-shield:: 2022
-        :class: shield
-        :alt: Maintenance
-
-    .. |pypi-downloads| pypi-shield::
-        :class: shield
-        :project: arya-api-framework
-        :downloads: month
-        :alt: PyPI - Downloads
+.. |language| image:: https://img.shields.io/github/languages/top/Aryathel/ApiFramework?color=purple
+    :class: shield
+    :target: https://github.com/Aryathel/ApiFramework
+    :alt: GitHub - Top Language
 
 This module is designed to be a base for the creation of clients that interact with RESTful web APIs.
 

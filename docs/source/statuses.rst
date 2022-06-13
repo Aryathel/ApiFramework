@@ -32,6 +32,8 @@ document:
       - Some entity that is sending a request to a server.
     * - Header
       - A header is a field in an HTTP request that passes additional context about the request, e.g. media formats, operating system, authorization, and just about anything else. Additionally, a response sent to a request will also include headers from the server.
+    * - Proxy
+      - A server which provides a gateway between a user/client and the end-server. The client sends requests to the proxy, which forwards them to the end server, and then returns the response back to the client.
     * - Request
       - An HTTP request that is sent from a client, to a server, expecting some form or response/action to be taken upon being received.
     * - Resource
@@ -70,7 +72,7 @@ what the intention of the client is, and what the server should send to the clie
     * - :ref:`post`
       - The primary method for giving data to a server. This method requests that the resource processes the request information, and will often send nothing other than a confirmation in response.
     * - :ref:`put`
-      - Requests that the target resource is either created or replaced by the data defined by the request. A successful ``PUT`` usually means that a subsequent ``GET`` will result in the same data being returned.
+      - Requests that the target resource is either created or replaced by the data defined by the request.
     * - :ref:`delete`
       - Requests that the server remove the data at the targeted location specified by the request.
     * - :ref:`connect`
@@ -104,11 +106,31 @@ HEAD
 ----
 :http:`[RFC9110.9.3.2] <section-9.3.2>`
 
+The ``HEAD`` request method is identical to the :ref:`get` method, except the server will not send any content in the
+response. The head method is used for a client to obtain metadata about a resource, rather than directly obtaining
+the resource itself.
+
+The response from the server should include all of the headers that the :ref:`get` request would, but simply without
+the content itself. However, some headers that are dependent on being set when the content is generated for the response
+may not be set, so this is not a guarantee.
+
 .. _post:
 
 POST
 ----
 :http:`[RFC9110.9.3.3] <section-9.3.3>`
+
+The ``POST`` request method requests that the targeted resource processes the data enclosed in the request according to
+that resource's implementation. Some common examples of post requests are:
+
+* Submitting a form on a website.
+* Posting a message on a forum.
+* Creating a new resource.
+* Adding data to a resource.
+
+If a resource is created as a result of a ``POST`` request, it should return a :ref:`201` status code. ``POST`` requests
+may return some form of confirmation response, or sometimes include a redirection to the location of a resource where
+the ``POST``ed data can be found.
 
 .. _put:
 
@@ -116,17 +138,34 @@ PUT
 ----
 :http:`[RFC9110.9.3.4] <section-9.3.4>`
 
+The ``PUT`` request method requests that the state of the target resource be created or replaced with the data defined
+in the request. A successful ``PUT`` request usually means that a followup :ref:`get` request would result in an
+equivalent data to the ``PUT`` request being returned.
+
+If a ``PUT`` request creates a resource on the server, the server will return a :ref:`201` status code. Otherwise, if
+the ``PUT`` request updates a resource, the server should send a :ref:`200` or a :ref:`201` status code.
+
+A server which receives a ``PUT`` request should validate the enclosed data according to its own methods before
+accepting the request.
+
 .. _delete:
 
 DELETE
 ------
 :http:`[RFC9110.9.3.5] <section-9.3.5>`
 
+The ``DELETE`` method requests that the origin server remove a target resource from its functionality. The goal is that
+the endpoint specified will delete the resource. For example, if an API request targets an image library website,
+a ``DELETE`` request may request the deletion of a specific image.
+
 .. _connect:
 
 CONNECT
 -------
 :http:`[RFC9110.9.3.6] <section-9.3.6>`
+
+The ``CONNECT`` request method requests that the recipient server establish a tunnel to the destination server.
+This in-between server (a :ref:`proxy <terms>`
 
 .. _options:
 
