@@ -69,6 +69,8 @@ autodoc_typehints = 'none'
 # Intersphinx links
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
+    'requests': ('https://requests.readthedocs.io/en/stable/', None),
+    'aiohttp': ('https://docs.aiohttp.org/en/stable/', None),
 }
 
 # External links
@@ -120,6 +122,12 @@ rst_prolog = """
 .. |validated_class| replace:: This class enforces |data_validation|_.
 .. |data_validation| replace:: *data validation*
 .. _data_validation: https://pydantic-docs.helpmanual.io/usage/validation_decorator/
+.. |sync_rate_limited_method| replace:: This method *can* enforce |sync_rate_limit|_.
+.. |async_rate_limited_method| replace:: This method *can* enforce |async_rate_limit|_.
+.. |sync_rate_limit| replace:: *rate limits*
+.. _sync_rate_limit: https://github.com/tomasbasham/ratelimit
+.. |async_rate_limit| replace:: *rate limits*
+.. _async_rate_limit: https://aiolimiter.readthedocs.io/en/latest/
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

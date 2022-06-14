@@ -5,7 +5,6 @@ Description: A RESTful API client for synchronous API applications.
 """
 
 # Stdlib modules
-from datetime import datetime
 from json import JSONDecodeError
 import logging
 from typing import (
@@ -112,7 +111,7 @@ class SyncClient:
             The default parameters to pass with every request. Can be overridden by individual requests.
             Defaults to ``None``.
         error_responses: Optional[:py:class:`dict`]
-            A mapping of :py:class:`int` error codes to :class:`BaseModel`s to use when that error code is
+            A mapping of :py:class:`int` error codes to :class:`BaseModel` types to use when that error code is
             received. Defaults to ``None`` and raises default exceptions for error codes.
         bearer_token: Optional[:py:class:`str`, :pydantic:`pydantic.SecretStr <usage/types/#secret-types>`
             A ``bearer_token`` that will be sent with requests in the ``Authorization`` header. Defaults to ``None``
@@ -136,6 +135,9 @@ class SyncClient:
 
     Attributes
     ----------
+        closed: :py:class:`bool`
+            Whether of not the internal :py:class:`requests.Session` has been closed. If the session has been closed,
+            the client will not allow any further requests to be made.
         uri: Optional[:py:class:`str`]
             The base URI that will prepend all requests made using the client.
         uri_root: Optional[:py:class:`str`]
@@ -172,9 +174,10 @@ class SyncClient:
     _error_responses: Optional[ErrorResponses] = None
     _rate_limit_interval: Optional[Union[int, float]] = 1
     _rate_limit: Optional[Union[int, float]] = None
-    _rate_limited = False
+    _rate_limited: bool = False
     _base: Optional[URL] = MISSING
     _session: SessionT
+    _closed: bool = False
 
     # ======================
     #    Initialization
@@ -249,7 +252,7 @@ class SyncClient:
         Tip
         ----
             By using this method, it becomes unnecessary to override the ``__init__`` method. Instead, any extra
-            parameters can be provided in this method which has no implementation at default.
+            parameters can be provided in this method, which has no implementation at default.
 
         Example
         -------
@@ -311,6 +314,11 @@ class SyncClient:
     # ======================
     #      Properties
     # ======================
+    # General Information
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
     # URI Options
     @property
     def uri(self) -> Optional[str]:
@@ -349,7 +357,6 @@ class SyncClient:
 
     @parameters.setter
     def parameters(self, params: Parameters) -> None:
-        print("EEEEE")
         self._parameters = flatten_obj(params) or {}
         self._session.params = self._parameters
 
@@ -393,6 +400,63 @@ class SyncClient:
             timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
+
+        Note
+        ____
+            If the client has been :attr:`closed` (using :meth:`close`), the request will not be processed. Instead,
+            a warning will be logged, and this method will return ``None``.
+
+        Arguments
+        ---------
+            method: :py:class:`str`
+                The request method to use for the request (see :ref:`http-requests`).
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to.
+
+        Keyword Args
+        ------------
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+                Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
+            data: Optional[:py:class:`Any`]
+                Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
+                ``None``.
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
+        if self.closed:
+            _log.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
+            return
+
         path = self.uri + path if path else self.uri
         headers = flatten_obj(headers)
         cookies = flatten_obj(cookies)
@@ -441,8 +505,8 @@ class SyncClient:
     @validate_arguments()
     def upload_file(
             self,
-            path: str,
             file: str,
+            path: str = None,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -451,6 +515,55 @@ class SyncClient:
             timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`post` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`,
+        which will upload a given :paramref:`file`.
+
+        Tip
+        ----
+            To stream larger file uploads, use the :meth:`stream_file` method.
+
+        Arguments
+        ---------
+            file: :py:class:`str`
+                The path to the file to upload.
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.post(
             path,
             headers=headers,
@@ -465,16 +578,65 @@ class SyncClient:
     @validate_arguments()
     def stream_file(
             self,
-            path: str,
             file: str,
+            path: str = None,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`post` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`,
+        which will upload a given :paramref:`file`.
+
+        Tip
+        ----
+            This method is meant to upload larger files in a stream manner, while the :meth:`upload_file` method
+            uploads the file without streaming it.
+
+        Arguments
+        ---------
+            file: :py:class:`str`
+                The path to the file to upload.
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
         return self.post(
             path,
             headers=headers,
@@ -500,13 +662,15 @@ class SyncClient:
     ) -> Optional[Union[Response, Dict]]:
         """
         * |validated_method|
+        * |sync_rate_limited_method|
 
-        Sends a :ref:`get` request to the :paramref:`path` specified.
+        Sends a :ref:`get` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
 
         Arguments
         ---------
             path: Optional[:py:class:`str`]
-                The path, relative to the client's :attr:`uri`, to send the request to.
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
@@ -560,9 +724,56 @@ class SyncClient:
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`post` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
+
+        Arguments
+        ---------
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+                Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
+            data: Optional[:py:class:`Any`]
+                Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
+                ``None``.
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.request(
             "POST",
             path,
@@ -587,9 +798,56 @@ class SyncClient:
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`patch` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
+
+        Arguments
+        ---------
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+                Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
+            data: Optional[:py:class:`Any`]
+                Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
+                ``None``.
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.request(
             "PATCH",
             path,
@@ -614,9 +872,56 @@ class SyncClient:
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`put` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
+
+        Arguments
+        ---------
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+                Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
+            data: Optional[:py:class:`Any`]
+                Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
+                ``None``.
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.request(
             "PUT",
             path,
@@ -641,9 +946,56 @@ class SyncClient:
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
+        """
+        * |validated_method|
+        * |sync_rate_limited_method|
+
+        Sends a :ref:`delete` request to the :paramref:`path` specified using the internal :py:class:`requests.Session`.
+
+        Arguments
+        ---------
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
+                the request will be sent to the client's :attr:`uri`.
+
+        Keyword Args
+        ------------
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+                Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
+            data: Optional[:py:class:`Any`]
+                Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
+                ``None``.
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
+                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
+                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
+                the default status code exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.request(
             "DELETE",
             path,
@@ -661,4 +1013,9 @@ class SyncClient:
     #    General methods
     # ======================
     def close(self):
-        self._session.close()
+        """
+        Closes the current :py:class:`requests.Session`, if not already closed.
+        """
+        if not self._closed:
+            self._session.close()
+            self._closed = True

@@ -19,6 +19,7 @@ from .sync_framework import SyncClient
 # Define exposed objects
 __all__ = [
     "AsyncClient",
+    "BaseModel",
     "PaginatedResponse",
     "Response",
     "SyncClient",

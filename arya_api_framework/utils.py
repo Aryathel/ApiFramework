@@ -132,7 +132,10 @@ def _to_key_val_list(obj: Optional[Dict]) -> Optional[List]:
 
 
 @validate_arguments()
-def merge_dicts(base_dict: Optional[Dict], update_dict: Optional[Dict]) -> Optional[Mapping]:
+def merge_dicts(
+        base_dict: Optional[Union[Dict, BaseModel]],
+        update_dict: Optional[Union[Dict, BaseModel]]
+) -> Optional[Mapping]:
     """Merges the base dict with the update dict, overriding any of the base dict's values
     with the updated values from the update dict.
 

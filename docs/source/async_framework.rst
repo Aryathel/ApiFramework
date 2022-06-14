@@ -3,5 +3,8 @@
 Async Client
 =============================================
 
+.. attributetable:: AsyncClient
+
 .. autoclass:: AsyncClient
-   :members:
+    :members:
+    :special-members: __post_init__

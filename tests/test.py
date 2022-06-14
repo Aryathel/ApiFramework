@@ -28,4 +28,5 @@ if __name__ == "__main__":
     client = MySyncClient('https://postman-echo.com/get', api_key='mysecretkey')
     print(client.get())
     client.parameters['e'] = "test"
+    client.close()
     print(client.get())

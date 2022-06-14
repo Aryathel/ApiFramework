@@ -31,6 +31,7 @@ from pydantic.schema import default_ref_template
 
 
 __all__ = [
+    'BaseModel',
     'Response',
     'PaginatedResponse'
 ]
