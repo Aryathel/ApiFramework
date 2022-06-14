@@ -8,6 +8,7 @@ Description: Utility functions for general use within the async branch.
 from collections import OrderedDict
 from pathlib import Path
 from typing import (
+    AsyncIterator,
     Dict,
     List,
     Mapping,
@@ -30,14 +31,28 @@ except ImportError:
 # Define exposed objects
 __all__ = [
     'chunk_file_reader',
-    'merge_params'
 ]
 
 
 # ======================
 #       Methods
 # ======================
-async def chunk_file_reader(file: Union[str, Path]):
+async def chunk_file_reader(file: Union[str, Path]) -> AsyncIterator[bytes]:
+    """|coro|
+
+    Reads a file from a path in chunks, to allow to large file uploads.
+
+    Arguments
+    ---------
+        file: Union[:py:class:`str`, :py:class:`pathlib.Path`]
+            The filepath to read from.
+
+    Returns
+    -------
+        AsyncGenerator[:py:class:`bytes`]
+            The bytes read from the file, in chunked increments.
+    """
+
     if not is_async:
         raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
 
@@ -47,36 +62,3 @@ async def chunk_file_reader(file: Union[str, Path]):
         while chunk:
             yield chunk
             chunk = await f.read(64 * 1024)
-
-
-def _to_key_val_list(obj: Optional[Dict]) -> Optional[List]:
-    if obj is None:
-        return obj
-
-    if isinstance(obj, (str, bytes, bool, int)):
-        raise ValueError("Cannot encode objects that are not key-val paired.")
-
-    if isinstance(obj, Mapping):
-        obj = obj.items()
-
-    return list(obj)
-
-
-def merge_params(static_params: Optional[Dict], request_params: Optional[Dict]) -> Optional[Mapping]:
-    if request_params is None:
-        return static_params
-
-    if static_params is None:
-        return request_params
-
-    if not (isinstance(static_params, Mapping) and isinstance(request_params, Mapping)):
-        return request_params
-
-    merged = OrderedDict(_to_key_val_list(static_params))
-    merged.update(_to_key_val_list(request_params))
-
-    none_keys = [k for (k, v) in merged.items() if v is None]
-    for k in none_keys:
-        del merged[k]
-
-    return merged

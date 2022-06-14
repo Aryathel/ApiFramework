@@ -131,9 +131,6 @@ Request Exceptions
 .. autoexception:: HTTPUnprocessableEntity
 .. attributetable:: HTTPUnprocessableEntity, HTTPClientError, HTTPError
 
-.. autoexception:: HTTPLocked
-.. attributetable:: HTTPLocked, HTTPClientError, HTTPError
-
 .. autoexception:: HTTPFailedDependency
 .. attributetable:: HTTPFailedDependency, HTTPClientError, HTTPError
 
@@ -191,6 +188,8 @@ Request Exceptions
 .. autoexception:: HTTPNetworkAuthenticationRequired
 .. attributetable:: HTTPNetworkAuthenticationRequired, HTTPServerError, HTTPError
 
+.. _exceptions:
+
 Exception Hierarchy
 -------------------
 
@@ -236,7 +235,6 @@ Exception Hierarchy
                     - :exc:`HTTPImATeapot`
                     - :exc:`HTTPMisdirectedRequest`
                     - :exc:`HTTPUnprocessableEntity`
-                    - :exc:`HTTPLocked`
                     - :exc:`HTTPFailedDependency`
                     - :exc:`HTTPTooEarly`
                     - :exc:`HTTPUpgradeRequired`

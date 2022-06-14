@@ -60,7 +60,6 @@ __all__ = [
     'HTTPImATeapot',
     'HTTPMisdirectedRequest',
     'HTTPUnprocessableEntity',
-    'HTTPLocked',
     'HTTPFailedDependency',
     'HTTPTooEarly',
     'HTTPUpgradeRequired',
@@ -226,9 +225,6 @@ class HTTPMultipleChoices(HTTPRedirect):
     .. inherits_from:: HTTPRedirect
 
     :ref:`300`
-
-    Raised when a 300 error is received, meaning that the request has more than one possible response,
-    and the request needs to be more specific.
     """
     status_code = HTTP_300_MULTIPLE_CHOICES
 
@@ -238,9 +234,6 @@ class HTTPMovedPermanently(HTTPRedirect):
     .. inherits_from:: HTTPRedirect
 
     :ref:`301`
-
-    Raised when a 301 error is received, meaning that the requested resource has been permanently
-    moved to a different URL.
     """
     status_code = HTTP_301_MOVED_PERMANENTLY
 
@@ -250,9 +243,6 @@ class HTTPFound(HTTPRedirect):
     .. inherits_from:: HTTPRedirect
 
     :ref:`302`
-
-    Raised when a 302 error is received, meaning that the request resource has been temporarily moved to a
-    different URL.
     """
     status_code = HTTP_302_FOUND
 
@@ -262,23 +252,15 @@ class HTTPSeeOther(HTTPRedirect):
     .. inherits_from:: HTTPRedirect
 
     :ref:`303`
-
-    Raised when a 303 error is received, meaning that the request has linked to another page instead of responding.
-
-    This is usually raised by ``PUT`` or ``POST`` requests, because the redirected page must always be displayed with
-    a ``GET`` request.
     """
     status_code = HTTP_303_SEE_OTHER
 
 
 class HTTPNotModified(HTTPRedirect):
-    """"
+    """
     .. inherits_from:: HTTPRedirect
 
     :ref:`304`
-
-    Raised when a 304 error is received, meaning that the requested resource does not need to be transmitted again,
-    as it is simply a redirection to a cached resource.
     """
     status_code = HTTP_304_NOT_MODIFIED
 
@@ -288,8 +270,6 @@ class HTTPUseProxy(HTTPRedirect):
     .. inherits_from:: HTTPRedirect
 
     :ref:`305`
-
-    Raised when a 305 error is received, meaning that the resource requested is only available through a proxy.
     """
     status_code = HTTP_305_USE_PROXY
 
@@ -499,7 +479,7 @@ class HTTPMisdirectedRequest(HTTPClientError):
     """
     .. inherits_from:: HTTPClientError
 
-    :ref:`419`
+    :ref:`421`
     """
     status_code = HTTP_421_MISDIRECTED_REQUEST
 
@@ -511,15 +491,6 @@ class HTTPUnprocessableEntity(HTTPClientError):
     :ref:`422`
     """
     status_code = HTTP_422_UNPROCESSABLE_ENTITY
-
-
-class HTTPLocked(HTTPClientError):
-    """
-    .. inherits_from:: HTTPClientError
-
-    :ref:`423`
-    """
-    status_code = HTTP_423_LOCKED
 
 
 class HTTPFailedDependency(HTTPClientError):
@@ -719,7 +690,6 @@ ERROR_RESPONSE_MAPPING = {
     HTTP_418_IM_A_TEAPOT: HTTPImATeapot,
     HTTP_421_MISDIRECTED_REQUEST: HTTPMisdirectedRequest,
     HTTP_422_UNPROCESSABLE_ENTITY: HTTPUnprocessableEntity,
-    HTTP_423_LOCKED: HTTPLocked,
     HTTP_424_FAILED_DEPENDENCY: HTTPFailedDependency,
     HTTP_425_TOO_EARLY: HTTPTooEarly,
     HTTP_426_UPGRADE_REQUIRED: HTTPUpgradeRequired,

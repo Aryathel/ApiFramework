@@ -13,18 +13,33 @@
 import logging
 import os
 import sys
+import re
 
 sys.path.insert(0, os.path.abspath('../../'))
 sys.path.append(os.path.abspath('extensions'))
 
-
 # -- Project information -----------------------------------------------------
 
-project = "Arya's API Framework"
-copyright = '2022, Aryathel'
-author = 'Aryathel'
-version = "0.1.4"
-
+project = None
+with open('../../arya_api_framework/__init__.py') as f:
+    project = re.search(r'^__project__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    if not project:
+        raise RuntimeError('__project__ is not set.')
+copyright = None
+with open('../../arya_api_framework/__init__.py') as f:
+    copyright = re.search(r'^__copyright__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    if not copyright:
+        raise RuntimeError('__copyright__ is not set.')
+author = None
+with open('../../arya_api_framework/__init__.py') as f:
+    author = re.search(r'^__author__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    if not author:
+        raise RuntimeError('__author__ is not set.')
+version = None
+with open('../../arya_api_framework/__init__.py') as f:
+    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    if not version:
+        raise RuntimeError('__version__ is not set.')
 
 # -- General configuration ---------------------------------------------------
 
@@ -100,7 +115,11 @@ rst_prolog = """
 .. |maybecoro| replace:: This function *could be a* |coroutine_link|_.
 .. |coroutine_link| replace:: *coroutine*
 .. _coroutine_link: https://docs.python.org/3/library/asyncio-task.html#coroutine
-.. |deco| replace:: This function is a decorator*.
+.. |deco| replace:: This function is a decorator.
+.. |validated_method| replace:: This method enforces |data_validation|_.
+.. |validated_class| replace:: This class enforces |data_validation|_.
+.. |data_validation| replace:: *data validation*
+.. _data_validation: https://pydantic-docs.helpmanual.io/usage/validation_decorator/
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

@@ -58,6 +58,8 @@ ErrorResponses = Dict[int, Type[PydBaseModel]]
 # ======================
 # This only exists for the purpose of documentation
 # since the Pydantic docs are not compatible with Sphinx.
+# The implementation here is merely a wrapper for the Pydantic
+# implementation, nothing more.
 # ======================
 class BaseModel(PydBaseModel):
     """
@@ -685,7 +687,7 @@ class Response(BaseModel, abc.ABC):
 
     Attributes
     -----------
-        uri: Optional[:py:class:`str`]
+        base_uri: Optional[:py:class:`str`]
             The url of the original request this is holding the response to.
         time: :py:class:`datetime.datetime`
             The time that the response was received at.
@@ -700,7 +702,7 @@ class Response(BaseModel, abc.ABC):
     _request_received_at: Optional[datetime] = PrivateAttr(default_factory=datetime.utcnow)
 
     @property
-    def uri(self) -> str:
+    def base_uri(self) -> str:
         return self._request_base
 
     @property

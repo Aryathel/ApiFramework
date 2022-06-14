@@ -288,6 +288,10 @@ def get_class_results(lookup, modulename, name, fullname, is_parent, inherited):
                         'def'
                     )
                     badge['badge-type'] = _('method')
+            elif inspect.isroutine(value):
+                key = _('Methods')
+                badge = attributetablebadge('def', 'def')
+                badge['badge-type'] = _('method')
 
         groups[key].append(TableElement(
             fullname=attrlookup,

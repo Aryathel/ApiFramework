@@ -38,7 +38,11 @@ from ..errors import (
     SyncClientError,
 )
 from ..framework import Response
-from ..utils import validate_type
+from ..utils import (
+    flatten_obj,
+    merge_dicts,
+    validate_type,
+)
 from .utils import (
     chunk_file_reader,
     sleep_and_retry,
@@ -108,33 +112,67 @@ class SyncClient:
             The default parameters to pass with every request. Can be overridden by individual requests.
             Defaults to ``None``.
         error_responses: Optional[:py:class:`dict`]
-            A mapping of :py:class:`int` error codes to :class:`BaseModel` models to use when that error code is
+            A mapping of :py:class:`int` error codes to :class:`BaseModel`s to use when that error code is
             received. Defaults to ``None`` and raises default exceptions for error codes.
         bearer_token: Optional[:py:class:`str`, :pydantic:`pydantic.SecretStr <usage/types/#secret-types>`
             A ``bearer_token`` that will be sent with requests in the ``Authorization`` header. Defaults to ``None``
-        rate_limit: Optional[:py:class:`int`]
+        rate_limit: Optional[Union[:py:class:`int`, :py:class:`float`]]
             The number of requests to allow over :paramref:`rate_limit_interval` seconds. Defaults to ``None``
-        rate_limit_interval: Optional[:py:class:`int`]
-            The period of time, in seconds, over which to apply the rate limit per every :paramref:`rate_limi` requests.
-            Defaults to ``1`` second.
+        rate_limit_interval: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            The period of time, in seconds, over which to apply the rate limit per every :paramref:`rate_limit`
+            requests. Defaults to ``1`` second.
+
+    Tip
+    ----
+        All of the arguments that can be used when instantiating a client can also be used as subclass parameters:
+
+        .. code-blocK:: python
+
+            class MyClient(SyncClient, uri="https://exampleurl.com", parameters={"arg1": "abc"}):
+                pass
+
+        Then, when instantiating the client, any arguments passed directly to the class will update the
+        subclass parameters.
 
     Attributes
     ----------
-        uri: :py:class:`str`
+        uri: Optional[:py:class:`str`]
             The base URI that will prepend all requests made using the client.
+        uri_root: Optional[:py:class:`str`]
+            The root origin of the :attr:`uri` given to the client.
+        uri_path: Optional[:py:class:`str`]
+            The path from the :attr:`uri_root` to the :attr:`uri` path.
+        headers: Optional[:py:class:`dict`]
+            The default headers that will be passed into every request, unless overridden.
+        cookies: Optional[:py:class:`dict`]
+            The default cookies that will be passed into every request, unless overridden.
+        parameters: Optional[:py:class:`dict`]
+            The default parameters that will be passed into every request, unless overridden.
+        error_responses: Optional[:py:class:`dict`]
+            A mapping of :py:class:`int` error codes to the :class:`BaseModel` that should be used to represent them.
+
+            Note
+            ----
+                By default, an internal exception mapping is used. See :ref:`exceptions`.
+
+        rate_limit: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            The number of requests per :attr:`rate_limit_interval` the client is allowed to send.
+        rate_limit_interval: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            The interval, in seconds, over which to apply a rate limit for :attr:`rate_limit` requests per interval.
+        is_rate_limited: :py:class:`bool`
+            Whether or not the client has a rate limit set.
     """
 
     # ======================
     #   Private Attributes
     # ======================
-    _headers: Optional[Headers] = None
-    _cookies: Optional[Cookies] = None
-    _parameters: Optional[Parameters] = None
+    _headers: Optional[Dict[str, Any]] = None
+    _cookies: Optional[Dict[str, Any]] = None
+    _parameters: Optional[Dict[str, Any]] = None
     _error_responses: Optional[ErrorResponses] = None
     _rate_limit_interval: Optional[Union[int, float]] = 1
     _rate_limit: Optional[Union[int, float]] = None
     _rate_limited = False
-    _last_request_at: Optional[datetime] = None
     _base: Optional[URL] = MISSING
     _session: SessionT
 
@@ -156,7 +194,8 @@ class SyncClient:
     ) -> None:
         if not is_sync:
             raise SyncClientError(
-                "The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`.")
+                "The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`."
+            )
 
         if uri:
             if validate_type(uri, str):
@@ -168,11 +207,6 @@ class SyncClient:
                 "This can be done through init parameters, or subclass parameters."
             )
 
-        if cookies:
-            self._cookies = cookies or {}
-        if parameters:
-            self._parameters = parameters or {}
-
         if bearer_token:
             if validate_type(bearer_token, SecretStr, err=False):
                 bearer_token = bearer_token.get_secret_value()
@@ -182,11 +216,10 @@ class SyncClient:
 
             headers["Authorization"] = f"Bearer {bearer_token}"
 
-        if headers:
-            self._headers = headers or {}
-
-        if error_responses:
-            self.error_responses = error_responses
+        self._cookies = merge_dicts(self.cookies, cookies) or {}
+        self._parameters = merge_dicts(self.parameters, parameters) or {}
+        self._headers = merge_dicts(self.headers, headers) or {}
+        self._error_responses = merge_dicts(self.error_responses, error_responses) or {}
 
         if rate_limit:
             if validate_type(rate_limit, [int, float]):
@@ -203,7 +236,7 @@ class SyncClient:
 
         self._session = Session()
         self._session.headers = self.headers
-        self._session.cookies = cookiejar_from_dict(self.cookies or {})
+        self._session.cookies = cookiejar_from_dict(self.cookies)
         self._session.params = self.parameters
 
         if hasattr(self, '__post_init__'):
@@ -213,6 +246,32 @@ class SyncClient:
         """This method is run after the ``__init__`` method is called, and is passed any extra arguments or
         keyword arguments that the regular init method did not recognize.
 
+        Tip
+        ----
+            By using this method, it becomes unnecessary to override the ``__init__`` method. Instead, any extra
+            parameters can be provided in this method which has no implementation at default.
+
+        Example
+        -------
+            This is a quick example showing how one might add a default ``apiKey`` parameter to their custom API client
+            using the :meth:`__post_init__` method.
+
+            .. code-block:: python
+
+                class MySyncClient(SyncClient):
+                    api_key: str
+
+                    def __post_init__(self, *args, api_key: str = None, **kwargs):
+                        self.api_key = api_key
+
+                        self.parameters['apiKey'] = self.api_key
+
+                client = MySyncClient('https://exampleurl.com', api_key='mysecretkey')
+
+                # >>> client.parameters
+                {
+                    "apiKey": "mysecretkey"
+                }
         """
         pass
 
@@ -222,6 +281,7 @@ class SyncClient:
             headers: Optional[Headers] = None,
             cookies: Optional[Cookies] = None,
             parameters: Optional[Parameters] = None,
+            bearer_token: Optional[Union[str, SecretStr]] = None,
             error_responses: Optional[ErrorResponses] = None,
             rate_limit: Optional[Union[int, float]] = None,
             rate_limit_interval: Optional[Union[int, float]] = None
@@ -229,14 +289,18 @@ class SyncClient:
         if uri:
             if validate_type(uri, str):
                 cls._base = URL(uri)
-        if headers:
-            cls._headers = headers
-        if cookies:
-            cls._cookies = cookies or {}
-        if parameters:
-            cls._parameters = parameters or {}
-        if error_responses:
-            cls._error_responses = error_responses
+        if bearer_token:
+            if validate_type(bearer_token, SecretStr, err=False):
+                bearer_token = bearer_token.get_secret_value()
+
+            if not headers:
+                headers = {}
+
+            headers["Authorization"] = f"Bearer {bearer_token}"
+        cls._headers = flatten_obj(headers)
+        cls._cookies = flatten_obj(cookies)
+        cls._parameters = flatten_obj(parameters)
+        cls._error_responses = error_responses or {}
         if rate_limit:
             if validate_type(rate_limit, [int, float]):
                 cls._rate_limit = rate_limit
@@ -257,7 +321,7 @@ class SyncClient:
         return str(self._base.origin()) if self._base is not MISSING else None
 
     @property
-    def uri_rel(self) -> Optional[str]:
+    def uri_path(self) -> Optional[str]:
         return str(self._base.relative()) if self._base is not MISSING else None
 
     # Default Request Settings
@@ -267,7 +331,7 @@ class SyncClient:
 
     @headers.setter
     def headers(self, headers: Headers) -> None:
-        self._headers = self._flatten_format(headers)
+        self._headers = flatten_obj(headers) or {}
         self._session.headers = self._headers
 
     @property
@@ -276,7 +340,7 @@ class SyncClient:
 
     @cookies.setter
     def cookies(self, cookies: Cookies) -> None:
-        self._cookies = self._flatten_format(cookies)
+        self._cookies = flatten_obj(cookies) or {}
         self._session.cookies = self._cookies
 
     @property
@@ -285,7 +349,8 @@ class SyncClient:
 
     @parameters.setter
     def parameters(self, params: Parameters) -> None:
-        self._parameters = self._flatten_format(params)
+        print("EEEEE")
+        self._parameters = flatten_obj(params) or {}
         self._session.params = self._parameters
 
     @property
@@ -295,8 +360,20 @@ class SyncClient:
     @error_responses.setter
     @validate_arguments()
     def error_responses(self, error_responses: ErrorResponses) -> None:
-        if error_responses is not MISSING:
-            self._error_responses = error_responses
+        self._error_responses = error_responses or {}
+
+    # Rate Limits
+    @property
+    def rate_limit(self) -> Optional[Union[int, float]]:
+        return self._rate_limit
+
+    @property
+    def rate_limit_interval(self) -> Optional[Union[int, float]]:
+        return self._rate_limit_interval
+
+    @property
+    def is_rate_limited(self) -> bool:
+        return self._rate_limited
 
     # ======================
     #    Request Methods
@@ -317,10 +394,10 @@ class SyncClient:
             error_responses: ErrorResponses = None
     ) -> Optional[Response]:
         path = self.uri + path if path else self.uri
-        headers = self._flatten_format(headers)
-        cookies = self._flatten_format(cookies)
-        parameters = self._flatten_format(parameters)
-        body = self._flatten_format(body)
+        headers = flatten_obj(headers)
+        cookies = flatten_obj(cookies)
+        parameters = flatten_obj(parameters)
+        body = flatten_obj(body)
         error_responses = error_responses or self.error_responses or {}
 
         with self._session.request(
@@ -343,7 +420,7 @@ class SyncClient:
 
                 if response_format is not None:
                     obj = parse_obj_as(response_format, response_json)
-                    obj.request_base_ = response.request.url
+                    obj._request_base = response.request.url
                     return obj
 
                 return response_json
@@ -418,9 +495,49 @@ class SyncClient:
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
-            timeout: int = 300,  # Default in aiohttp
+            timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[Union[Response, Dict]]:
+        """
+        * |validated_method|
+
+        Sends a :ref:`get` request to the :paramref:`path` specified.
+
+        Arguments
+        ---------
+            path: Optional[:py:class:`str`]
+                The path, relative to the client's :attr:`uri`, to send the request to.
+
+        Keyword Args
+        ------------
+            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific headers to send with the :ref:`get` request. Defaults to ``None`` and uses the
+                default client :attr:`headers`.
+            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific cookies to send with the :ref:`get` request. Defaults to ``None`` and uses the default
+                client :attr:`cookies`.
+            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+                Request-specific query string parameters to send with the :ref:`get` request. Defaults to ``None`` and
+                uses the default client :attr:`parameters`.
+            response_format: Optional[Type[:class:`Response`]]
+                The model to use as the response format. This offers direct data validation and easy object-oriented
+                implementation. Defaults to ``None``, and the request will return a JSON structure.
+            timeout: Optional[:py:class:`int`]
+                The length of time, in seconds, to wait for a response to the request before raising a timeout error.
+                Defaults to ``300`` seconds, or 5 minutes.
+            error_responses: Optional[:py:class:`dict`]
+                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses. Defaults
+                to ``None``, and uses the default :attr:`error_responses` attribute. If the :attr:`error_responses`
+                is also ``None``, or a status code does not have a specified response format, the default status code
+                exceptions will be raised.
+
+        Returns
+        -------
+            Optional[Union[:py:class:`dict`, :class:`Response`]]
+                The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
+                :py:class:`dict` otherwise.
+        """
+
         return self.request(
             "GET",
             path,
@@ -545,11 +662,3 @@ class SyncClient:
     # ======================
     def close(self):
         self._session.close()
-
-    # ======================
-    #     Classmethods
-    # ======================
-    @classmethod
-    @validate_arguments()
-    def _flatten_format(cls, data: Optional[Parameters]) -> Dict[str, Any]:
-        return data.dict(exclude_unset=True) if isinstance(data, BaseModel) else data

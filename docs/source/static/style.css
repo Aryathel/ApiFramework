@@ -951,9 +951,9 @@ a.reference.rfc > strong {
     font-family: inherit;
 }
 
-.reference em {
+/* .reference em {
     color: var(--attribute-table-badge);
-}
+} */
 
 /* exception hierarchy */
 

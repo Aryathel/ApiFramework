@@ -42,10 +42,12 @@ from ..errors import (
     ResponseParseError,
 )
 from ..framework import Response
-from ..utils import validate_type
+from ..utils import (
+    merge_dicts,
+    validate_type,
+)
 from .utils import (
     chunk_file_reader,
-    merge_params,
 )
 
 # Async modules
@@ -286,7 +288,7 @@ class AsyncClient:
         path = self.uri_rel + path if self.uri_rel else path
         headers = self._flatten_format(headers)
         cookies = self._flatten_format(cookies)
-        parameters = merge_params(self.parameters, self._flatten_format(parameters))
+        parameters = merge_dicts(self.parameters, self._flatten_format(parameters))
         body = self._flatten_format(body)
         error_responses = error_responses or self.error_responses or {}
 
