@@ -78,9 +78,15 @@ Asynchronous implementation:
 
     python -m pip install arya-api-framework[async]
 
-Note
-----
-Proper documentation is being worked on at the moment: https://apiframework.readthedocs.io/en/latest/
+Documentation
+-------------
+
+https://apiframework.readthedocs.io/en/latest/
+
+TODO Features
+-------------
+
+- [ ] Response caching.
 
 Citation
 --------

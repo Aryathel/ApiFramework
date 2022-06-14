@@ -128,3 +128,8 @@ If you are struggling to find specific information, see these references:
 
     * `Search <search.html>`_
     * `Glossary <genindex.html>`_
+
+TODO Features
+-------------
+
+- [ ] Response caching.
