@@ -1,16 +1,19 @@
 {# Build sphinx_version_info tuple from sphinx_version string in pure Jinja #}
 {%- set (_ver_major, _ver_minor, _ver_bugfix) = sphinx_version.split('.') | map('int') -%}
 {%- set sphinx_version_info = (_ver_major, _ver_minor, _ver_bugfix) -%}
+{%- set meta_root = "https://apiframework.readthedocs.io/en/latest/" -%}
 {%- set meta_title = "Arya’s API Framework | " + title -%}
 {%- set meta_description = "A simple Python API framework for use as a base for the creation of API wrappers." -%}
-{%- set meta_url = pathto(pagename) -%}
-{%- set meta_image = pathto('_static/logo.png', 1) -%}
+{%- set meta_url = meta_root + pagename + ".html" -%}
+{%- set meta_image = meta_root + "_static/logo.png" -%}
 
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="temp" content="{{ pagename }}">
 
     <!-- Primary Meta Tags -->
     <meta name="title" content="{{ meta_title }}">
