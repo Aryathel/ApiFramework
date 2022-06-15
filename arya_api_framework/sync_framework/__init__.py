@@ -5,6 +5,7 @@ Description: A RESTful API client for synchronous API applications.
 """
 
 # Stdlib modules
+from io import BufferedReader
 from json import JSONDecodeError
 import logging
 from typing import (
@@ -39,6 +40,7 @@ from ..errors import (
 from ..framework import Response
 from ..utils import (
     flatten_obj,
+    flatten_params,
     merge_dicts,
     validate_type,
 )
@@ -73,6 +75,7 @@ _log: logging.Logger = logging.getLogger("arya_api_framework.Sync")
 # ======================
 #        Typing
 # ======================
+DictStrAny = Dict[str, Any]
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
@@ -202,7 +205,7 @@ class SyncClient:
 
         if uri:
             if validate_type(uri, str):
-                self._base = URL(uri)
+                self._base = URL(uri.rstrip('/'))
 
         if not self.uri:
             raise SyncClientError(
@@ -220,7 +223,7 @@ class SyncClient:
             headers["Authorization"] = f"Bearer {bearer_token}"
 
         self._cookies = merge_dicts(self.cookies, cookies) or {}
-        self._parameters = merge_dicts(self.parameters, parameters) or {}
+        self._parameters = merge_dicts(self.parameters, flatten_params(parameters)) or {}
         self._headers = merge_dicts(self.headers, headers) or {}
         self._error_responses = merge_dicts(self.error_responses, error_responses) or {}
 
@@ -291,7 +294,7 @@ class SyncClient:
     ) -> None:
         if uri:
             if validate_type(uri, str):
-                cls._base = URL(uri)
+                cls._base = URL(uri.rstrip('/'))
         if bearer_token:
             if validate_type(bearer_token, SecretStr, err=False):
                 bearer_token = bearer_token.get_secret_value()
@@ -302,7 +305,7 @@ class SyncClient:
             headers["Authorization"] = f"Bearer {bearer_token}"
         cls._headers = flatten_obj(headers)
         cls._cookies = flatten_obj(cookies)
-        cls._parameters = flatten_obj(parameters)
+        cls._parameters = flatten_params(parameters)
         cls._error_responses = error_responses or {}
         if rate_limit:
             if validate_type(rate_limit, [int, float]):
@@ -357,7 +360,7 @@ class SyncClient:
 
     @parameters.setter
     def parameters(self, params: Parameters) -> None:
-        self._parameters = flatten_obj(params) or {}
+        self._parameters = flatten_params(params) or {}
         self._session.params = self._parameters
 
     @property
@@ -393,13 +396,14 @@ class SyncClient:
             *,
             body: Body = None,
             data: Any = None,
+            files: Dict[str, Any] = None,
             headers: Headers = None,
             cookies: Cookies = None,
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[Union[Union[Response, List[Response]], Union[DictStrAny, List[DictStrAny]]]]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -425,6 +429,8 @@ class SyncClient:
             data: Optional[:py:class:`Any`]
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
+            files: Optional[:py:class:`dict`]
+                A mapping of :py:class:`str` file names to file objects to send in the request.
             headers: Optional[:py:class:`dict`, :class:`BaseModel`]
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
@@ -457,10 +463,13 @@ class SyncClient:
             _log.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
+        if path and not path.startswith('/'):
+            path = f'/{path}'
+
         path = self.uri + path if path else self.uri
         headers = flatten_obj(headers)
         cookies = flatten_obj(cookies)
-        parameters = flatten_obj(parameters)
+        parameters = flatten_params(parameters)
         body = flatten_obj(body)
         error_responses = error_responses or self.error_responses or {}
 
@@ -472,7 +481,8 @@ class SyncClient:
                 params=parameters,
                 json=body,
                 data=data,
-                timeout=timeout
+                timeout=timeout,
+                files=files
         ) as response:
             _log.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
 
@@ -483,6 +493,13 @@ class SyncClient:
                     raise ResponseParseError(raw_response=response.text)
 
                 if response_format is not None:
+                    if isinstance(response_json, list):
+                        lst = []
+                        for dt in response_json:
+                            obj = parse_obj_as(response_format, dt)
+                            obj._request_base = response.request.url
+                            lst.append(obj)
+                        return lst
                     obj = parse_obj_as(response_format, response_json)
                     obj._request_base = response.request.url
                     return obj
@@ -563,13 +580,13 @@ class SyncClient:
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
                 :py:class:`dict` otherwise.
         """
-
-        return self.post(
+        return self.request(
+            'POST',
             path,
             headers=headers,
             cookies=cookies,
             parameters=parameters,
-            data={'file': open(file, 'rb')},
+            files={'file': open(file, 'rb')},
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
@@ -637,7 +654,8 @@ class SyncClient:
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
                 :py:class:`dict` otherwise.
         """
-        return self.post(
+        return self.request(
+            'POST',
             path,
             headers=headers,
             cookies=cookies,

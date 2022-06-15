@@ -6,6 +6,7 @@ Description: A RESTful API client for asynchronous API applications.
 
 # Stdlib modules
 import logging
+import os
 from typing import (
     Any,
     Dict,
@@ -40,12 +41,11 @@ from ..errors import (
 from ..framework import Response
 from ..utils import (
     flatten_obj,
+    flatten_params,
     merge_dicts,
     validate_type,
 )
-from .utils import (
-    chunk_file_reader,
-)
+from .utils import chunk_file_reader
 
 # Async modules
 is_async: bool
@@ -56,6 +56,9 @@ try:
     )
     from aiolimiter import AsyncLimiter
     import asyncio
+
+    if os.name == 'nt':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     is_async = True
 except ImportError:
@@ -76,6 +79,7 @@ _log: logging.Logger = logging.getLogger("arya_api_framework.Async")
 # ======================
 #        Typing
 # ======================
+DictStrAny = Dict[str, Any]
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
@@ -204,7 +208,7 @@ class AsyncClient:
 
         if uri:
             if validate_type(uri, str):
-                self._base = URL(uri)
+                self._base = URL(uri.rstrip('/'))
 
         if self.uri is None:
             raise AsyncClientError(
@@ -222,7 +226,7 @@ class AsyncClient:
             headers["Authorization"] = f"Bearer {bearer_token}"
 
         self._cookies = merge_dicts(self.cookies, cookies) or {}
-        self._parameters = merge_dicts(self.parameters, parameters) or {}
+        self._parameters = merge_dicts(self.parameters, flatten_params(parameters)) or {}
         self._headers = merge_dicts(self.headers, headers) or {}
         self._error_responses = merge_dicts(self.error_responses, error_responses) or {}
 
@@ -292,7 +296,7 @@ class AsyncClient:
     ) -> None:
         if uri:
             if validate_type(uri, str):
-                cls._base = URL(uri)
+                cls._base = URL(uri.rstrip('/'))
         if bearer_token:
             if validate_type(bearer_token, SecretStr, err=False):
                 bearer_token = bearer_token.get_secret_value()
@@ -303,7 +307,7 @@ class AsyncClient:
             headers["Authorization"] = f"Bearer {bearer_token}"
         cls._headers = flatten_obj(headers)
         cls._cookies = flatten_obj(cookies)
-        cls._parameters = flatten_obj(parameters)
+        cls._parameters = flatten_params(parameters)
         cls._error_responses = error_responses or {}
         if rate_limit:
             if validate_type(rate_limit, [int, float]):
@@ -340,7 +344,7 @@ class AsyncClient:
 
     @headers.setter
     def headers(self, headers: Headers) -> None:
-        self._headers = flatten_obj(headers)
+        self._headers = flatten_obj(headers) or {}
         self._session._default_headers = CIMultiDict(self._headers) if headers else CIMultiDict()
 
     @property
@@ -349,7 +353,7 @@ class AsyncClient:
 
     @cookies.setter
     def cookies(self, cookies: Cookies) -> None:
-        self._cookies = flatten_obj(cookies)
+        self._cookies = flatten_obj(cookies) or {}
         self._session._cookie_jar.update_cookies(self._cookies)
 
     @property
@@ -357,8 +361,8 @@ class AsyncClient:
         return self._parameters
 
     @parameters.setter
-    def parameters(self, params: Parameters) -> None:
-        self._parameters = flatten_obj(params)
+    def parameters(self, parameters: Parameters) -> None:
+        self._parameters = flatten_params(parameters) or {}
 
     @property
     def error_responses(self) -> Optional[ErrorResponses]:
@@ -367,8 +371,7 @@ class AsyncClient:
     @error_responses.setter
     @validate_arguments()
     def error_responses(self, error_responses: ErrorResponses) -> None:
-        if error_responses is not MISSING:
-            self._error_responses = error_responses
+        self._error_responses = error_responses or {}
 
     # Rate Limits
     @property
@@ -400,7 +403,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[Union[Union[Response, List[Response]], Union[DictStrAny, List[DictStrAny]]]]:
         """
         * |coro|
         * |validated_method|
@@ -458,6 +461,9 @@ class AsyncClient:
             _log.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
+        if path and not path.startswith('/'):
+            path = f'/{path}'
+
         if self._limiter:
             if not self._limiter.has_capacity():
                 _log.info("Waiting for rate limit")
@@ -490,6 +496,14 @@ class AsyncClient:
                     raise ResponseParseError(raw_response=response_text)
 
                 if response_format is not None:
+                    if isinstance(response_json, list):
+                        lst = []
+                        for dt in response_json:
+                            obj = parse_obj_as(response_format, dt)
+                            obj._request_base = str(response.url)
+                            lst.append(obj)
+                        return lst
+
                     obj = parse_obj_as(response_format, response_json)
                     obj._request_base = str(response.url)
                     return obj
@@ -513,8 +527,8 @@ class AsyncClient:
     @validate_arguments()
     async def upload_file(
             self,
-            path: str,
             file: str,
+            path: str = None,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -572,7 +586,8 @@ class AsyncClient:
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
                 :py:class:`dict` otherwise.
         """
-        return await self.post(
+        return await self.request(
+            'POST',
             path,
             headers=headers,
             cookies=cookies,
@@ -586,8 +601,8 @@ class AsyncClient:
     @validate_arguments()
     async def stream_file(
             self,
-            path: str,
             file: str,
+            path: str = None,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -646,7 +661,8 @@ class AsyncClient:
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
                 :py:class:`dict` otherwise.
         """
-        return await self.post(
+        return await self.request(
+            'POST',
             path,
             headers=headers,
             cookies=cookies,
@@ -732,7 +748,7 @@ class AsyncClient:
             data: Any = None,
             headers: Headers = None,
             cookies: Cookies = None,
-            params: Parameters = None,
+            parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
@@ -792,7 +808,7 @@ class AsyncClient:
             data=data,
             headers=headers,
             cookies=cookies,
-            params=params,
+            parameters=parameters,
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,

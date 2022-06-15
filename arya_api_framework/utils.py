@@ -17,14 +17,16 @@ from typing import (
 )
 
 # 3rd party modules
-from pydantic import validate_arguments, BaseModel
+from pydantic import validate_arguments
 
 # Local modules
 from .errors import ValidationError
+from .framework import BaseModel
 
 # Define exposed objects
 __all__ = [
     "flatten_obj",
+    "flatten_params",
     "merge_dicts",
     "validate_type",
 ]
@@ -99,6 +101,34 @@ def flatten_obj(obj: Optional[DictOrModel]) -> Dict:
             A mapping of :py:class:`str` keys to Any values.
     """
     return obj.dict(exclude_unset=True) if isinstance(obj, BaseModel) else obj
+
+
+@validate_arguments()
+def flatten_params(obj: Optional[DictOrModel]) -> Dict:
+    """Flattens a given object into a :py:class:`dict`.
+
+    This is mainly used for arguments where a :py:class:`dict` *or* a :class:`BaseModel` can be accepted as
+    parameters.
+
+    Note
+    ----
+        The only difference between this method and :func:`flatten_obj` is that this method reduces sub-models to be
+        fields in the primary return :py:class:`dict`, rather than maintaining the model structure. For example, a model
+        ``User`` with a field ``address`` of type ``Address``, which has a ``city`` field set to ``cityname`` and a
+        ``zipcode`` set to ``12345``, would be flattened to ``{"address.city": "cityname", "address.zipcode": 12345}``.
+
+
+    Arguments
+    ---------
+        obj: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+            The object or model to flatten into a :py:class:`dict` format.
+
+    Returns
+    -------
+        :py:class:`dict`
+            A mapping of :py:class:`str` keys to Any values.
+    """
+    return obj.flatten() if isinstance(obj, BaseModel) else obj
 
 
 @validate_arguments()

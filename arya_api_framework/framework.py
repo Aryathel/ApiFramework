@@ -321,7 +321,7 @@ class BaseModel(PydBaseModel):
         )
 
     @classmethod
-    def parse_obj(cls: Type[PydBaseModel], obj: Any) -> PydBaseModel:
+    def parse_obj(cls: Type[PydBaseModel], obj: Any) -> 'BaseModel':
         """
         .. external_inherits_from::
             :objtype: classmethod
@@ -645,6 +645,20 @@ class BaseModel(PydBaseModel):
                     ``BaseModel.construct(**model_instance.dict())``.
         """
         return super().construct(_fields_set=_fields_set, **values)
+
+    def flatten(self, obj: dict = None, prefix: str = None) -> DictStrAny:
+        if not obj:
+            obj = self.dict(exclude_unset=True)
+        res = {}
+        for k, v in obj.items():
+            if prefix:
+                k = f"{prefix}.{k}"
+            if isinstance(v, dict):
+                v = self.flatten(v, k)
+                res.update(**v)
+            else:
+                res.update({k: v})
+        return res
 
 
 # ======================
