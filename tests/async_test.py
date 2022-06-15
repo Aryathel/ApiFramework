@@ -3,7 +3,6 @@ import logging
 
 from arya_api_framework import AsyncClient
 
-
 logging.basicConfig(level=logging.INFO)
 
 
@@ -24,6 +23,7 @@ async def main():
     patch = await client.patch('/patch', data={"patch": ["args1", "args2"]})
     delete = await client.delete('/delete', parameters={"testing": "param2"})
     upload = await client.upload_file('test.txt', '/post')
+    upload = await client.stream_file('test2.txt', '/post')
 
     await client.close()
 

@@ -46,7 +46,7 @@ requirements = [
 
 extras_require = {
     "sync": ["requests>=2.27.1", "ratelimit>=2.2.1"],
-    "async": ["aiohttp>=3.8.1", "aiolimiter>=1.0.0"]
+    "async": ["aiohttp>=3.8.1", "aiolimiter>=1.0.0", "aiofiles>=0.8.0"]
 }
 
 packages = [

@@ -87,6 +87,10 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Dict[str, Any], BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
+RequestResponse = Union[
+    Union[Response, List[Response]],
+    Union[DictStrAny, List[DictStrAny]]
+]
 ClientSessionT = TypeVar('ClientSessionT', bound='ClientSession')
 
 
@@ -403,7 +407,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Union[Union[Response, List[Response]], Union[DictStrAny, List[DictStrAny]]]]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -536,7 +540,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -610,7 +614,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -684,7 +688,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -752,7 +756,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -827,7 +831,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -902,7 +906,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|
@@ -977,7 +981,7 @@ class AsyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |coro|
         * |validated_method|

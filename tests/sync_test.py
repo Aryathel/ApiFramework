@@ -23,6 +23,7 @@ if __name__ == "__main__":
     patch = client.patch('/patch', data={"patch": ["args1", "args2"]})
     delete = client.delete('/delete', parameters={"testing": "param2"})
     upload = client.upload_file('test.txt', '/post')
+    upload = client.stream_file('test2.txt', '/post')
 
     client.close()
 

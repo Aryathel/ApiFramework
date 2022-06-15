@@ -83,6 +83,10 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Dict[str, Any], BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
+RequestResponse = Union[
+    Union[Response, List[Response]],
+    Union[DictStrAny, List[DictStrAny]]
+]
 SessionT = TypeVar('SessionT', bound='Session')
 
 
@@ -403,7 +407,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Union[Union[Response, List[Response]], Union[DictStrAny, List[DictStrAny]]]]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -531,7 +535,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -604,7 +608,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -677,7 +681,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Union[Response, Dict]]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -744,7 +748,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -818,7 +822,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -892,7 +896,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -966,7 +970,7 @@ class SyncClient:
             response_format: Type[Response] = None,
             timeout: int = 300,
             error_responses: ErrorResponses = None
-    ) -> Optional[Response]:
+    ) -> Optional[RequestResponse]:
         """
         * |validated_method|
         * |sync_rate_limited_method|
