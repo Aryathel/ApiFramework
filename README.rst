@@ -86,7 +86,7 @@ https://apiframework.readthedocs.io/en/latest/
 TODO Features
 -------------
 
-- [ ] Response caching.
+https://apiframework.readthedocs.io/en/latest/#todo-features
 
 Citation
 --------
