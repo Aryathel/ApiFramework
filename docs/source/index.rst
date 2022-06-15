@@ -18,57 +18,57 @@ Arya's API Framework
         * - Other
           - |license| |language|
 
-.. |docs| image:: https://img.shields.io/readthedocs/apiframework/latest?logo=read-the-docs&color=purple&logoColor=white
+.. |docs| image:: https://img.shields.io/readthedocs/apiframework/latest?logo=read-the-docs&color=8566D9&logoColor=white
     :class: shield
     :target: https://apiframework.readthedocs.io/en/latest/
     :alt: RTFD - Docs Build Status
 
-.. |pypi-version| image:: https://img.shields.io/pypi/v/arya-api-framework?color=purple
+.. |pypi-version| image:: https://img.shields.io/pypi/v/arya-api-framework?color=8566D9
     :class: shield
     :target: https://pypi.org/project/arya-api-framework/
     :alt: PyPI - Package Version
 
-.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/arya-api-framework?logo=python&logoColor=white&color=purple
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/arya-api-framework?logo=python&logoColor=white&color=8566D9
     :class: shield
     :target: https://pypi.org/project/arya-api-framework/
     :alt: PyPI - Supported Python Versions
 
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/arya-api-framework?color=purple
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/arya-api-framework?color=8566D9
     :class: shield
     :target: https://pypi.org/project/arya-api-framework/
     :alt: PyPI - Supported Implementations
 
-.. |wheel| image:: https://img.shields.io/pypi/wheel/arya-api-framework?color=purple
+.. |wheel| image:: https://img.shields.io/pypi/wheel/arya-api-framework?color=8566D9
     :class: shield
     :target: https://pypi.org/project/arya-api-framework/
     :alt: PyPI - Wheel
 
-.. |commits-latest| image:: https://img.shields.io/github/last-commit/Aryathel/ApiFramework/main?color=purple
+.. |commits-latest| image:: https://img.shields.io/github/last-commit/Aryathel/ApiFramework/main?color=8566D9
     :class: shield
     :target: https://github.com/Aryathel/APIFramework
     :alt: Github - Last Commit
 
-.. |maintained| image:: https://img.shields.io/maintenance/yes/2022?color=purple
+.. |maintained| image:: https://img.shields.io/maintenance/yes/2022?color=8566D9
     :class: shield
     :target: https://github.com/Aryathel/APIFramework/commit/main
     :alt: Maintenance
 
-.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/arya-api-framework?color=purple
+.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/arya-api-framework?color=8566D9
     :class: shield
     :target: https://pypistats.org/packages/arya-api-framework
     :alt: PyPI - Downloads
 
-.. |codefactor| image:: https://img.shields.io/codefactor/grade/github/Aryathel/ApiFramework?logo=codefactor&color=purple&logoColor=white
+.. |codefactor| image:: https://img.shields.io/codefactor/grade/github/Aryathel/ApiFramework?logo=codefactor&color=8566D9&logoColor=white
     :class: shield
     :target: https://www.codefactor.io/repository/github/Aryathel/ApiFramework
     :alt: CodeFactor - Grade
 
-.. |license| image:: https://img.shields.io/github/license/Aryathel/ApiFramework?color=purple
+.. |license| image:: https://img.shields.io/github/license/Aryathel/ApiFramework?color=8566D9
     :class: shield
     :target: https://github.com/Aryathel/ApiFramework/blob/main/LICENSE
     :alt: GitHub - License
 
-.. |language| image:: https://img.shields.io/github/languages/top/Aryathel/ApiFramework?color=purple
+.. |language| image:: https://img.shields.io/github/languages/top/Aryathel/ApiFramework?color=8566D9
     :class: shield
     :target: https://github.com/Aryathel/ApiFramework
     :alt: GitHub - Top Language
@@ -79,6 +79,12 @@ This module is designed to be a base for the creation of clients that interact w
    - Synchronous branch utilizing :resource:`requests <requests>`.
    - Asynchronous branch utilizing :resource:`aiohttp <aiohttp>`.
    - Integrated with :resource:`pydantic <pydantic>` for strict typing.
+
+.. admonition:: Disclaimer
+
+    This library is not intended for fast, performant code. It is instead optimized for user-friendliness and strict
+    data typing. While this will likely not be a noticeable issue for many users, please keep this in mind.
+
 
 Installation
 ------------
@@ -98,9 +104,12 @@ To install the async branch:
 Getting Started
 ---------------
 .. toctree::
+    :maxdepth: 1
 
-   quickstart
-   logging
+    quickstart
+    logging
+
+.. _api_reference:
 
 API Reference
 --------------
@@ -132,4 +141,7 @@ If you are struggling to find specific information, see these references:
 TODO Features
 -------------
 
-- [ ] Response caching.
+.. checklist::
+    :check:`Rate Limits (Allow rate limit application for limited APIs.)`
+    :uncheck:`Response Caching (Reduce processing times/network load.)`
+    :uncheck:`Sub-Clients (For creating API category modules.)`

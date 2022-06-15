@@ -60,6 +60,7 @@ extensions = [
     'attributetable',
     'resourcelinks',
     'nitpick_file_ignorer',
+    'checklist'
 ]
 
 # Autodoc settings
@@ -108,7 +109,6 @@ resource_links = {
     'aiohttp': 'https://docs.aiohttp.org/en/stable/',
     'requests': 'https://requests.readthedocs.io/en/latest/',
     'pydantic': 'https://pydantic-docs.helpmanual.io/',
-    'postmanecho': 'https://www.postman-echo.com/',
     'ratelimit': 'https://pypi.org/project/ratelimit/'
 }
 
@@ -117,17 +117,36 @@ rst_prolog = """
 .. |maybecoro| replace:: This function *could be a* |coroutine_link|_.
 .. |coroutine_link| replace:: *coroutine*
 .. _coroutine_link: https://docs.python.org/3/library/asyncio-task.html#coroutine
+
 .. |deco| replace:: This function is a decorator.
+
 .. |validated_method| replace:: This method enforces |data_validation|_.
 .. |validated_class| replace:: This class enforces |data_validation|_.
 .. |data_validation| replace:: *data validation*
 .. _data_validation: https://pydantic-docs.helpmanual.io/usage/validation_decorator/
+
 .. |sync_rate_limited_method| replace:: This method *can* enforce |sync_rate_limit|_.
 .. |async_rate_limited_method| replace:: This method *can* enforce |async_rate_limit|_.
 .. |sync_rate_limit| replace:: *rate limits*
 .. _sync_rate_limit: https://github.com/tomasbasham/ratelimit
 .. |async_rate_limit| replace:: *rate limits*
 .. _async_rate_limit: https://aiolimiter.readthedocs.io/en/latest/
+"""
+
+rst_epilog = """
+.. |check| raw:: html
+
+    <span class="checklist-container">
+        <input class="checklist-hide" checked="" type="checkbox" disabled="">
+        <span class="checklist"></span>
+    </span>
+
+.. |uncheck| raw:: html
+    
+    <span class="checklist-container">
+        <input class="checklist-hide" type="checkbox" disabled="">
+        <span class="checklist"></span>
+    </span>
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

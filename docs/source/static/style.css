@@ -34,6 +34,8 @@ Historically however, thanks to:
     --grey-8: #2a2a2e;
     --black: #0c0c0d;
 
+    --logo-purple: #8566D9;
+
     --blue-1: #3399ff;
     --blue-2: #0a84ff;
     --blue-3: #0060df;
@@ -167,16 +169,8 @@ Historically however, thanks to:
     --attribute-table-entry-hover-text: var(--blue-1);
     --attribute-table-badge: var(--grey-4);
     --highlighted-text: rgba(250, 166, 26, 0.2);
-}
-
-img[src$="snake_dark.svg"]  {
-    display: none;
-}
-:root[data-theme="dark"] img[src$="snake.svg"] {
-    display: none;
-}
-:root[data-theme="dark"] img[src$="snake_dark.svg"] {
-    display: inherit;
+    --checklist-checked: var(--logo-purple);
+    --checklist-unchecked: var(--grey-8);
 }
 
 body {
@@ -187,6 +181,39 @@ body {
     height: 100%;
     background-color: var(--main-background);
     color: var(--main-text);
+}
+
+/* Checklists */
+
+.checklist { list-style: none }
+.checklist li { margin-top: 4px; }
+
+.checklist-item {
+    position: relative;
+    margin-left: 20px;
+}
+
+.checklist-item::before {
+    content: "";
+    border-radius: 4px;
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: -35px;
+    height: 25px;
+    width: 25px;
+    text-align: center;
+}
+
+.checklist-item.unchecked::before {
+    background-color: var(--checklist-unchecked);
+}
+
+.checklist-item.checked::before {
+    content: "\f00c";
+    font: var(--fa-font-solid);
+    background-color: var(--checklist-checked);
+    line-height: 25px;
 }
 
 
@@ -848,14 +875,15 @@ p.admonition-title::before {
     -webkit-font-smoothing: antialiased;
 }
 
-div.important, div.note, div.hint, div.tip {
+div.important, div.note, div.hint, div.tip, div.admonition-disclaimer {
     border-left-color: var(--note-background);
 }
 
 div.important > p.admonition-title,
 div.note > p.admonition-title,
 div.hint > p.admonition-title,
-div.tip > p.admonition-title {
+div.tip > p.admonition-title,
+div.admonition-disclaimer > p.admonition-title {
     background-color: var(--note-background);
     color: var(--note-text);
 }
@@ -863,7 +891,8 @@ div.tip > p.admonition-title {
 div.important > p.admonition-title::before,
 div.note > p.admonition-title::before,
 div.hint > p.admonition-title::before,
-div.tip > p.admonition-title::before {
+div.tip > p.admonition-title::before,
+div.admonition-disclaimer > p.admonition-title::before {
     content: '\f05a';
 }
 
