@@ -1,12 +1,38 @@
 {# Build sphinx_version_info tuple from sphinx_version string in pure Jinja #}
 {%- set (_ver_major, _ver_minor, _ver_bugfix) = sphinx_version.split('.') | map('int') -%}
 {%- set sphinx_version_info = (_ver_major, _ver_minor, _ver_bugfix) -%}
+{%- set meta_title = "Arya’s API Framework | " + title -%}
+{%- set meta_description = "A simple Python API framework for use as a base for the creation of API wrappers." -%}
+{%- set meta_url = pathto(pagename) -%}
+{%- set meta_image = pathto('_static/logo.png', 1) -%}
 
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="{{ meta_title }}">
+    <meta name="description" content="{{ meta_description }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ meta_url }}">
+    <meta property="og:title" content="{{ meta_title }}">
+    <meta property="og:description" content="{{ meta_description }}">
+    <meta property="og:image" content="{{ meta_image }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ meta_url }}">
+    <meta property="twitter:title" content="{{ meta_title }}">
+    <meta property="twitter:description" content="{{ meta_description }}">
+    <meta property="twitter:image" content="{{ meta_image }}">
+
+    <!-- Discord -->
+    <meta name="theme-color" content="#8566D9">
+
     <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
     {%- block extrahead %} {% endblock %}
     <!-- end extra head -->
