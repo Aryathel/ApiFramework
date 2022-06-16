@@ -5,15 +5,12 @@ Description: A RESTful API client for asynchronous API applications.
 """
 
 # Stdlib modules
-import logging
-import os
 from typing import (
     Any,
     Dict,
     List,
     Optional,
     Type,
-    TypeVar,
     Union,
 )
 from json import JSONDecodeError
@@ -22,7 +19,6 @@ from json import JSONDecodeError
 from multidict import CIMultiDict
 from pydantic import (
     BaseModel,
-    SecretStr,
 )
 from pydantic import (
     parse_obj_as,
@@ -31,49 +27,31 @@ from pydantic import (
 from yarl import URL
 
 # Local modules
+from ..constants import ClientBranch
 from ..errors import (
-    AsyncClientError,
     ERROR_RESPONSE_MAPPING,
     HTTPError,
-    MISSING,
     ResponseParseError,
 )
-from ..framework import Response
+from ..framework import _ClientInternal
+from ..models import Response
 from ..utils import (
     flatten_obj,
-    flatten_params,
     merge_dicts,
-    validate_type,
 )
 from .utils import chunk_file_reader
 
 # Async modules
-is_async: bool
 try:
-    from aiohttp import (
-        ClientSession,
-        ClientTimeout,
-    )
+    from aiohttp import ClientTimeout
     from aiolimiter import AsyncLimiter
-    import asyncio
-
-    if os.name == 'nt':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    is_async = True
 except ImportError:
-    is_async = False
+    pass
 
 # Define exposed objects
 __all__ = [
     "AsyncClient"
 ]
-
-
-# ======================
-#     Logging Setup
-# ======================
-_log: logging.Logger = logging.getLogger("arya_api_framework.Async")
 
 
 # ======================
@@ -91,14 +69,13 @@ RequestResponse = Union[
     Union[Response, List[Response]],
     Union[DictStrAny, List[DictStrAny]]
 ]
-ClientSessionT = TypeVar('ClientSessionT', bound='ClientSession')
 
 
 # ======================
 #     Async Client
 # ======================
-class AsyncClient:
-    """ The asynchronous API client class. Utilizes the :resource:`aiohttp <aiohttp>` module.
+class AsyncClient(_ClientInternal):
+    """ The core API framework client for asynchronous API integration.
 
     Arguments
     ---------
@@ -108,7 +85,7 @@ class AsyncClient:
             Warning
             -------
                 This should always either be passed as an argument here or as a subclass argument. If neither are given,
-                an :class:`errors.AsyncClientError` exception will be raised.
+                an :class:`errors.ClientError` exception will be raised.
 
     Keyword Args
     ------------
@@ -136,7 +113,7 @@ class AsyncClient:
     ----
         All of the arguments that can be used when instantiating a client can also be used as subclass parameters:
 
-        .. code-blocK:: python
+        .. code-block:: python
 
             class MyClient(SyncClient, uri="https://exampleurl.com", parameters={"arg1": "abc"}):
                 pass
@@ -147,13 +124,25 @@ class AsyncClient:
     Attributes
     ----------
         closed: :py:class:`bool`
+            * |readonly|
+
             Whether of not the internal :py:class:`requests.Session` has been closed. If the session has been closed,
             the client will not allow any further requests to be made.
+        extensions: Mapping[:py:class:`str`, :py:class:`types.ModuleType`]
+            * |readonly|
+
+            A mapping of extensions by name to extension.
         uri: Optional[:py:class:`str`]
+            * |readonly|
+
             The base URI that will prepend all requests made using the client.
         uri_root: Optional[:py:class:`str`]
+            * |readonly|
+
             The root origin of the :attr:`uri` given to the client.
         uri_path: Optional[:py:class:`str`]
+            * |readonly|
+
             The path from the :attr:`uri_root` to the :attr:`uri` path.
         headers: Optional[:py:class:`dict`]
             The default headers that will be passed into every request, unless overridden.
@@ -169,226 +158,23 @@ class AsyncClient:
                 By default, an internal exception mapping is used. See :ref:`exceptions`.
 
         rate_limit: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |readonly|
+
             The number of requests per :attr:`rate_limit_interval` the client is allowed to send.
         rate_limit_interval: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |readonly|
+
             The interval, in seconds, over which to apply a rate limit for :attr:`rate_limit` requests per interval.
         is_rate_limited: :py:class:`bool`
+            * |readonly|
+
             Whether or not the client has a rate limit set.
     """
-
     # ======================
     #   Private Attributes
     # ======================
-    _headers: Optional[Dict[str, Any]] = None
-    _cookies: Optional[Dict[str, Any]] = None
-    _parameters: Optional[Dict[str, Any]] = None
-    _error_responses: Optional[ErrorResponses] = None
-    _rate_limit_interval: Optional[Union[int, float]] = 1
-    _rate_limit: Optional[Union[int, float]] = None
-    _rate_limited: bool = False
+    _branch = ClientBranch.async_
     _limiter: Optional['AsyncLimiter'] = None
-    _base: Optional[URL] = MISSING
-    _session: ClientSessionT
-    _closed: bool = False
-
-    # ======================
-    #    Initialization
-    # ======================
-    def __init__(
-            self,
-            uri: Optional[str] = None,
-            *args,
-            headers: Optional[Headers] = None,
-            cookies: Optional[Cookies] = None,
-            parameters: Optional[Parameters] = None,
-            error_responses: Optional[ErrorResponses] = None,
-            bearer_token: Optional[Union[str, SecretStr]] = None,
-            rate_limit: Optional[Union[int, float]] = None,
-            rate_limit_interval: Optional[Union[int, float]] = None,
-            **kwargs
-    ) -> None:
-        if not is_async:
-            raise AsyncClientError("The async context is unavailable. Try installing with `python -m pip install arya-api-framework[async]`.")
-
-        if uri:
-            if validate_type(uri, str):
-                self._base = URL(uri.rstrip('/'))
-
-        if self.uri is None:
-            raise AsyncClientError(
-                "The client needs a base uri specified. "
-                "This can be done through init parameters, or subclass parameters."
-            )
-
-        if bearer_token:
-            if validate_type(bearer_token, SecretStr, err=False):
-                bearer_token = bearer_token.get_secret_value()
-
-            if not headers:
-                headers = {}
-
-            headers["Authorization"] = f"Bearer {bearer_token}"
-
-        self._cookies = merge_dicts(self.cookies, cookies) or {}
-        self._parameters = merge_dicts(self.parameters, flatten_params(parameters)) or {}
-        self._headers = merge_dicts(self.headers, headers) or {}
-        self._error_responses = merge_dicts(self.error_responses, error_responses) or {}
-
-        if rate_limit:
-            if validate_type(rate_limit, [int, float]):
-                self._rate_limit = rate_limit
-        if rate_limit_interval:
-            if validate_type(rate_limit_interval, [int, float]):
-                self._rate_limit_interval = rate_limit_interval
-
-        if self._rate_limit:
-            self._limiter = AsyncLimiter(self._rate_limit, self._rate_limit_interval)
-            self._rate_limited = True
-
-        self._session = ClientSession(
-            self.uri_root,
-            headers=self.headers or {},
-            cookies=self.cookies or {}
-        )
-
-        if hasattr(self, '__post_init__'):
-            self.__post_init__(*args, **kwargs)
-
-    def __post_init__(self, *args, **kwargs) -> None:
-        """This method is run after the ``__init__`` method is called, and is passed any extra arguments or
-        keyword arguments that the regular init method did not recognize.
-
-        Tip
-        ----
-            By using this method, it becomes unnecessary to override the ``__init__`` method. Instead, any extra
-            parameters can be provided in this method, which has no implementation at default.
-
-        Example
-        -------
-            This is a quick example showing how one might add a default ``apiKey`` parameter to their custom API client
-            using the :meth:`__post_init__` method.
-
-            .. code-block:: python
-
-                class MyAsyncClient(AsyncClient):
-                    api_key: str
-
-                    def __post_init__(self, *args, api_key: str = None, **kwargs):
-                        self.api_key = api_key
-
-                        self.parameters['apiKey'] = self.api_key
-
-                client = MyAsyncClient('https://exampleurl.com', api_key='mysecretkey')
-
-                # >>> client.parameters
-                {
-                    "apiKey": "mysecretkey"
-                }
-        """
-        pass
-
-    def __init_subclass__(
-            cls,
-            uri: Optional[str] = None,
-            headers: Optional[Headers] = None,
-            cookies: Optional[Cookies] = None,
-            parameters: Optional[Parameters] = None,
-            bearer_token: Optional[Union[str, SecretStr]] = None,
-            error_responses: Optional[ErrorResponses] = None,
-            rate_limit: Optional[Union[int, float]] = None,
-            rate_limit_interval: Optional[Union[int, float]] = None
-    ) -> None:
-        if uri:
-            if validate_type(uri, str):
-                cls._base = URL(uri.rstrip('/'))
-        if bearer_token:
-            if validate_type(bearer_token, SecretStr, err=False):
-                bearer_token = bearer_token.get_secret_value()
-
-            if not headers:
-                headers = {}
-
-            headers["Authorization"] = f"Bearer {bearer_token}"
-        cls._headers = flatten_obj(headers)
-        cls._cookies = flatten_obj(cookies)
-        cls._parameters = flatten_params(parameters)
-        cls._error_responses = error_responses or {}
-        if rate_limit:
-            if validate_type(rate_limit, [int, float]):
-                cls._rate_limit = rate_limit
-        if rate_limit_interval:
-            if validate_type(rate_limit_interval, [int, float]):
-                cls._rate_limit_interval = rate_limit_interval
-
-    # ======================
-    #      Properties
-    # ======================
-    # General Information
-    @property
-    def closed(self) -> bool:
-        return self._closed
-
-    # URI Options
-    @property
-    def uri(self) -> Optional[str]:
-        return str(self._base) if self._base is not MISSING else None
-
-    @property
-    def uri_root(self) -> Optional[str]:
-        return str(self._base.origin()) if self._base is not MISSING else None
-
-    @property
-    def uri_path(self) -> Optional[str]:
-        return str(self._base.relative()) if self._base is not MISSING else None
-
-    # Default Request Settings
-    @property
-    def headers(self) -> Optional[Headers]:
-        return self._headers
-
-    @headers.setter
-    def headers(self, headers: Headers) -> None:
-        self._headers = flatten_obj(headers) or {}
-        self._session._default_headers = CIMultiDict(self._headers) if headers else CIMultiDict()
-
-    @property
-    def cookies(self) -> Optional[Cookies]:
-        return self._cookies
-
-    @cookies.setter
-    def cookies(self, cookies: Cookies) -> None:
-        self._cookies = flatten_obj(cookies) or {}
-        self._session._cookie_jar.update_cookies(self._cookies)
-
-    @property
-    def parameters(self) -> Optional[Parameters]:
-        return self._parameters
-
-    @parameters.setter
-    def parameters(self, parameters: Parameters) -> None:
-        self._parameters = flatten_params(parameters) or {}
-
-    @property
-    def error_responses(self) -> Optional[ErrorResponses]:
-        return self._error_responses
-
-    @error_responses.setter
-    @validate_arguments()
-    def error_responses(self, error_responses: ErrorResponses) -> None:
-        self._error_responses = error_responses or {}
-
-    # Rate Limits
-    @property
-    def rate_limit(self) -> Optional[Union[int, float]]:
-        return self._rate_limit
-
-    @property
-    def rate_limit_interval(self) -> Optional[Union[int, float]]:
-        return self._rate_limit_interval
-
-    @property
-    def is_rate_limited(self) -> bool:
-        return self._rate_limited
 
     # ======================
     #    Request Methods
@@ -462,7 +248,7 @@ class AsyncClient:
                 :py:class:`dict` otherwise.
         """
         if self.closed:
-            _log.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
+            self.logger.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
         if path and not path.startswith('/'):
@@ -470,7 +256,7 @@ class AsyncClient:
 
         if self._limiter:
             if not self._limiter.has_capacity():
-                _log.info("Waiting for rate limit")
+                self.logger.info("Waiting for rate limit")
             await self._limiter.acquire()
 
         path = self.uri_path + path if self.uri_path else path
@@ -490,7 +276,7 @@ class AsyncClient:
                 data=data,
                 timeout=ClientTimeout(total=timeout)
         ) as response:
-            _log.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
+            self.logger.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
 
             if response.ok:
                 try:
@@ -1053,3 +839,22 @@ class AsyncClient:
         if not self._closed:
             await self._session.close()
             self._closed = True
+
+    # ======================
+    #   Private Methods
+    # ======================
+    def _init_rate_limit(self) -> None:
+        if self.rate_limit:
+            self._limiter = AsyncLimiter(self.rate_limit, self.rate_limit_interval)
+            self._rate_limited = True
+
+    def _update_session_headers(self) -> None:
+        if self._session:
+            self._session._default_headers = CIMultiDict(self.headers) if self.headers else CIMultiDict()
+
+    def _update_session_cookies(self) -> None:
+        if self._session:
+            self._session._cookie_jar.update_cookies(self.cookies)
+
+    def _update_session_parameters(self) -> None:
+        pass

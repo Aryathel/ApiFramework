@@ -5,19 +5,29 @@ Description: Various exceptions for use throughout the module.
 """
 
 # Stdlib modules
-from typing import Union
+from typing import (
+    Any,
+    Optional,
+    Union,
+)
 
 # 3rd party modules
 from pydantic import BaseModel
 
 # Local modules
-from .statuses import *
+from .constants import HTTPStatus
 
 # Define exposed objects
 __all__ = [
     # General
     "MISSING",
     "ValidationError",
+    "ExtensionError",
+    "ExtensionNotFound",
+    "ExtensionAlreadyLoaded",
+    "ExtensionNotLoaded",
+    "ExtensionEntryPointError",
+    "ExtensionFailed",
     # Client
     "ClientError",
     "AsyncClientError",
@@ -94,12 +104,17 @@ RawResponse = Union[str, bytes]
 #   Generalized Errors
 # ======================
 class FrameworkException(Exception):
-    """The core exception for all exceptions used in the API framework."""
+    """
+    The core exception for all exceptions used in the API framework.
+    """
     pass
 
 
 class MISSING(FrameworkException):
-    """Raised when something is missing.
+    """
+    .. inherits_from:: FrameworkException
+
+    Raised when something is missing.
 
     This often serves as an alternative to a ``None`` value when that may actually
     carry meaning.
@@ -108,15 +123,105 @@ class MISSING(FrameworkException):
 
 
 class ValidationError(FrameworkException):
-    """Raised when validating a variable's type."""
+    """
+    .. inherits_from:: FrameworkException
+
+    Raised when validating a variable's type.
+    """
     pass
+
+
+class ExtensionError(FrameworkException):
+    """
+    .. inherits_from:: FrameworkException
+
+    The base exception for errors related to extensions.
+
+    Attributes
+    ----------
+        name: :py:class:`str`
+            The extension that had an error.
+    """
+    name: str
+
+    def __init__(self, message: Optional[str] = None, *args: Any, name: str) -> None:
+        self.name = name
+        message = message or f'Extension {name!r} has en error.'
+        super().__init__(message, *args)
+
+
+class ExtensionNotFound(ExtensionError):
+    """
+    .. inherits_from:: ExtensionError
+
+    Raised when an extension is requested to be loaded, but it cannot be found.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'Extension {name!r} could not be loaded.'
+        super().__init__(msg, name=name)
+
+
+class ExtensionAlreadyLoaded(ExtensionError):
+    """
+    .. inherits_from:: ExtensionError
+
+    Raised when an extension that is being loaded has already been loaded.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'Extension {name!r} already loaded.'
+        super().__init__(msg, name=name)
+
+
+class ExtensionNotLoaded(ExtensionError):
+    """
+    .. inherits_from:: ExtensionError
+
+    Raised when an extension that is being unloaded is not currently loaded.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'Extension {name!r} has not been loaded.'
+        super().__init__(msg, name=name)
+
+
+class ExtensionEntryPointError(ExtensionError):
+    """
+    .. inherits_from:: ExtensionError
+
+    Raised when an extension is being loaded, but not ``setup`` entry point function was found.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'Extension {name!r} has no "setup" function.'
+        super().__init__(msg, name=name)
+
+
+class ExtensionFailed(ExtensionError):
+    """
+    .. inherits_from:: ExtensionError
+
+    Raised when an extension fails to load during the module ``setup`` entry point function.
+
+    Attributes
+    ----------
+        original: :exc:`Exception`
+            The original exception that was raised. This can also be found in the ``__cause__`` attribute.
+    """
+    original: Exception
+
+    def __init__(self, name: str, original: Exception) -> None:
+        self.original: Exception = original
+        msg = f'Extension {name!r} raised an error: {original.__class__.__name__}: {original}'
+        super().__init__(msg, name=name)
 
 
 # ======================
 #    Client Errors
 # ======================
 class ClientError(FrameworkException):
-    """The parent exception for any client-specific errors."""
+    """
+    .. inherits_from:: FrameworkException
+
+    The parent exception for any client-specific errors.
+    """
     pass
 
 
@@ -161,7 +266,10 @@ class ResponseParseError(ClientError):
 
 
 class HTTPError(FrameworkException):
-    """The base exception for any request errors.
+    """
+    .. inherits_from:: FrameworkException
+
+    The base exception for any request errors.
 
     See :ref:`http-status-codes` for information about HTTP status codes.
 
@@ -226,7 +334,7 @@ class HTTPMultipleChoices(HTTPRedirect):
 
     :ref:`300`
     """
-    status_code = HTTP_300_MULTIPLE_CHOICES
+    status_code = HTTPStatus.HTTP_300_MULTIPLE_CHOICES
 
 
 class HTTPMovedPermanently(HTTPRedirect):
@@ -235,7 +343,7 @@ class HTTPMovedPermanently(HTTPRedirect):
 
     :ref:`301`
     """
-    status_code = HTTP_301_MOVED_PERMANENTLY
+    status_code = HTTPStatus.HTTP_301_MOVED_PERMANENTLY
 
 
 class HTTPFound(HTTPRedirect):
@@ -244,7 +352,7 @@ class HTTPFound(HTTPRedirect):
 
     :ref:`302`
     """
-    status_code = HTTP_302_FOUND
+    status_code = HTTPStatus.HTTP_302_FOUND
 
 
 class HTTPSeeOther(HTTPRedirect):
@@ -253,7 +361,7 @@ class HTTPSeeOther(HTTPRedirect):
 
     :ref:`303`
     """
-    status_code = HTTP_303_SEE_OTHER
+    status_code = HTTPStatus.HTTP_303_SEE_OTHER
 
 
 class HTTPNotModified(HTTPRedirect):
@@ -262,7 +370,7 @@ class HTTPNotModified(HTTPRedirect):
 
     :ref:`304`
     """
-    status_code = HTTP_304_NOT_MODIFIED
+    status_code = HTTPStatus.HTTP_304_NOT_MODIFIED
 
 
 class HTTPUseProxy(HTTPRedirect):
@@ -271,7 +379,7 @@ class HTTPUseProxy(HTTPRedirect):
 
     :ref:`305`
     """
-    status_code = HTTP_305_USE_PROXY
+    status_code = HTTPStatus.HTTP_305_USE_PROXY
 
 
 class HTTPReserved(HTTPRedirect):
@@ -280,7 +388,7 @@ class HTTPReserved(HTTPRedirect):
 
     :ref:`306`
     """
-    status_code = HTTP_306_RESERVED
+    status_code = HTTPStatus.HTTP_306_RESERVED
 
 
 class HTTPTemporaryRedirect(HTTPRedirect):
@@ -289,7 +397,7 @@ class HTTPTemporaryRedirect(HTTPRedirect):
 
     :ref:`307`
     """
-    status_code = HTTP_307_TEMPORARY_REDIRECT
+    status_code = HTTPStatus.HTTP_307_TEMPORARY_REDIRECT
 
 
 class HTTPPermanentRedirect(HTTPRedirect):
@@ -299,7 +407,7 @@ class HTTPPermanentRedirect(HTTPRedirect):
     :ref:`308`
     """
 
-    status_code = HTTP_308_PERMANENT_REDIRECT
+    status_code = HTTPStatus.HTTP_308_PERMANENT_REDIRECT
 
 
 # 400
@@ -309,7 +417,7 @@ class HTTPBadRequest(HTTPClientError):
 
     :ref:`400`
     """
-    status_code = HTTP_400_BAD_REQUEST
+    status_code = HTTPStatus.HTTP_400_BAD_REQUEST
 
 
 class HTTPUnauthorized(HTTPClientError):
@@ -318,7 +426,7 @@ class HTTPUnauthorized(HTTPClientError):
 
     :ref:`401`
     """
-    status_code = HTTP_401_UNAUTHORIZED
+    status_code = HTTPStatus.HTTP_401_UNAUTHORIZED
 
 
 class HTTPPaymentRequired(HTTPClientError):
@@ -327,7 +435,7 @@ class HTTPPaymentRequired(HTTPClientError):
 
     :ref:`402`
     """
-    status_code = HTTP_402_PAYMENT_REQUIRED
+    status_code = HTTPStatus.HTTP_402_PAYMENT_REQUIRED
 
 
 class HTTPForbidden(HTTPClientError):
@@ -337,7 +445,7 @@ class HTTPForbidden(HTTPClientError):
     :ref:`403`
     """
 
-    status_code = HTTP_403_FORBIDDEN
+    status_code = HTTPStatus.HTTP_403_FORBIDDEN
 
 
 class HTTPNotFound(HTTPClientError):
@@ -346,7 +454,7 @@ class HTTPNotFound(HTTPClientError):
 
     :ref:`404`
     """
-    status_code = HTTP_404_NOT_FOUND
+    status_code = HTTPStatus.HTTP_404_NOT_FOUND
 
 
 class HTTPMethodNotAllowed(HTTPClientError):
@@ -355,7 +463,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
 
     :ref:`405`
     """
-    status_code = HTTP_405_METHOD_NOT_ALLOWED
+    status_code = HTTPStatus.HTTP_405_METHOD_NOT_ALLOWED
 
 
 class HTTPNotAcceptable(HTTPClientError):
@@ -364,7 +472,7 @@ class HTTPNotAcceptable(HTTPClientError):
 
     :ref:`406`
     """
-    status_code = HTTP_406_NOT_ACCEPTABLE
+    status_code = HTTPStatus.HTTP_406_NOT_ACCEPTABLE
 
 
 class HTTPProxyAuthenticationRequired(HTTPClientError):
@@ -373,7 +481,7 @@ class HTTPProxyAuthenticationRequired(HTTPClientError):
 
     :ref:`407`
     """
-    status_code = HTTP_407_PROXY_AUTHENTICATION_REQUIRED
+    status_code = HTTPStatus.HTTP_407_PROXY_AUTHENTICATION_REQUIRED
 
 
 class HTTPRequestTimeout(HTTPClientError):
@@ -382,7 +490,7 @@ class HTTPRequestTimeout(HTTPClientError):
 
     :ref:`408`
     """
-    status_code = HTTP_408_REQUEST_TIMEOUT
+    status_code = HTTPStatus.HTTP_408_REQUEST_TIMEOUT
 
 
 class HTTPConflict(HTTPClientError):
@@ -391,7 +499,7 @@ class HTTPConflict(HTTPClientError):
 
     :ref:`409`
     """
-    status_code = HTTP_409_CONFLICT
+    status_code = HTTPStatus.HTTP_409_CONFLICT
 
 
 class HTTPGone(HTTPClientError):
@@ -400,7 +508,7 @@ class HTTPGone(HTTPClientError):
 
     :ref:`410`
     """
-    status_code = HTTP_410_GONE
+    status_code = HTTPStatus.HTTP_410_GONE
 
 
 class HTTPLengthRequired(HTTPClientError):
@@ -409,7 +517,7 @@ class HTTPLengthRequired(HTTPClientError):
 
     :ref:`411`
     """
-    status_code = HTTP_411_LENGTH_REQUIRED
+    status_code = HTTPStatus.HTTP_411_LENGTH_REQUIRED
 
 
 class HTTPPreconditionFailed(HTTPClientError):
@@ -418,7 +526,7 @@ class HTTPPreconditionFailed(HTTPClientError):
 
     :ref:`412`
     """
-    status_code = HTTP_412_PRECONDITION_FAILED
+    status_code = HTTPStatus.HTTP_412_PRECONDITION_FAILED
 
 
 class HTTPRequestEntityTooLarge(HTTPClientError):
@@ -427,7 +535,7 @@ class HTTPRequestEntityTooLarge(HTTPClientError):
 
     :ref:`413`
     """
-    status_code = HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    status_code = HTTPStatus.HTTP_413_REQUEST_ENTITY_TOO_LARGE
 
 
 class HTTPRequestUriTooLong(HTTPClientError):
@@ -436,7 +544,7 @@ class HTTPRequestUriTooLong(HTTPClientError):
 
     :ref:`414`
     """
-    status_code = HTTP_414_REQUEST_URI_TOO_LONG
+    status_code = HTTPStatus.HTTP_414_REQUEST_URI_TOO_LONG
 
 
 class HTTPUnsupportedMediaType(HTTPClientError):
@@ -445,7 +553,7 @@ class HTTPUnsupportedMediaType(HTTPClientError):
 
     :ref:`415`
     """
-    status_code = HTTP_415_UNSUPPORTED_MEDIA_TYPE
+    status_code = HTTPStatus.HTTP_415_UNSUPPORTED_MEDIA_TYPE
 
 
 class HTTPRequestedRangeNotSatisfiable(HTTPClientError):
@@ -454,7 +562,7 @@ class HTTPRequestedRangeNotSatisfiable(HTTPClientError):
 
     :ref:`416`
     """
-    status_code = HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
+    status_code = HTTPStatus.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
 
 
 class HTTPExpectationFailed(HTTPClientError):
@@ -463,7 +571,7 @@ class HTTPExpectationFailed(HTTPClientError):
 
     :ref:`417`
     """
-    status_code = HTTP_417_EXPECTATION_FAILED
+    status_code = HTTPStatus.HTTP_417_EXPECTATION_FAILED
 
 
 class HTTPImATeapot(HTTPClientError):
@@ -472,7 +580,7 @@ class HTTPImATeapot(HTTPClientError):
 
     :ref:`418`
     """
-    status_code = HTTP_418_IM_A_TEAPOT
+    status_code = HTTPStatus.HTTP_418_IM_A_TEAPOT
 
 
 class HTTPMisdirectedRequest(HTTPClientError):
@@ -481,7 +589,7 @@ class HTTPMisdirectedRequest(HTTPClientError):
 
     :ref:`421`
     """
-    status_code = HTTP_421_MISDIRECTED_REQUEST
+    status_code = HTTPStatus.HTTP_421_MISDIRECTED_REQUEST
 
 
 class HTTPUnprocessableEntity(HTTPClientError):
@@ -490,7 +598,7 @@ class HTTPUnprocessableEntity(HTTPClientError):
 
     :ref:`422`
     """
-    status_code = HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = HTTPStatus.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class HTTPFailedDependency(HTTPClientError):
@@ -499,7 +607,7 @@ class HTTPFailedDependency(HTTPClientError):
 
     :ref:`424`
     """
-    status_code = HTTP_424_FAILED_DEPENDENCY
+    status_code = HTTPStatus.HTTP_424_FAILED_DEPENDENCY
 
 
 class HTTPTooEarly(HTTPClientError):
@@ -508,7 +616,7 @@ class HTTPTooEarly(HTTPClientError):
 
     :ref:`425`
     """
-    status_code = HTTP_425_TOO_EARLY
+    status_code = HTTPStatus.HTTP_425_TOO_EARLY
 
 
 class HTTPUpgradeRequired(HTTPClientError):
@@ -517,7 +625,7 @@ class HTTPUpgradeRequired(HTTPClientError):
 
     :ref:`426`
     """
-    status_code = HTTP_426_UPGRADE_REQUIRED
+    status_code = HTTPStatus.HTTP_426_UPGRADE_REQUIRED
 
 
 class HTTPPreconditionRequired(HTTPClientError):
@@ -526,7 +634,7 @@ class HTTPPreconditionRequired(HTTPClientError):
 
     :ref:`428`
     """
-    status_code = HTTP_428_PRECONDITION_REQUIRED
+    status_code = HTTPStatus.HTTP_428_PRECONDITION_REQUIRED
 
 
 class HTTPTooManyRequests(HTTPClientError):
@@ -535,7 +643,7 @@ class HTTPTooManyRequests(HTTPClientError):
 
     :ref:`429`
     """
-    status_code = HTTP_429_TOO_MANY_REQUESTS
+    status_code = HTTPStatus.HTTP_429_TOO_MANY_REQUESTS
 
 
 class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
@@ -544,7 +652,7 @@ class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
 
     :ref:`431`
     """
-    status_code = HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE
+    status_code = HTTPStatus.HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE
 
 
 class HTTPUnavailableForLegalReasons(HTTPClientError):
@@ -553,7 +661,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
 
     :ref:`451`
     """
-    status_code = HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS
+    status_code = HTTPStatus.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS
 
 
 # 500
@@ -563,7 +671,7 @@ class HTTPInternalServerError(HTTPServerError):
 
     :ref:`500`
     """
-    status_code = HTTP_500_INTERNAL_SERVER_ERROR
+    status_code = HTTPStatus.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 class HTTPNotImplemented(HTTPServerError):
@@ -572,7 +680,7 @@ class HTTPNotImplemented(HTTPServerError):
 
     :ref:`501`
     """
-    status_code = HTTP_501_NOT_IMPLEMENTED
+    status_code = HTTPStatus.HTTP_501_NOT_IMPLEMENTED
 
 
 class HTTPBadGateway(HTTPServerError):
@@ -581,7 +689,7 @@ class HTTPBadGateway(HTTPServerError):
 
     :ref:`502`
     """
-    status_code = HTTP_502_BAD_GATEWAY
+    status_code = HTTPStatus.HTTP_502_BAD_GATEWAY
 
 
 class HTTPServiceUnavailable(HTTPServerError):
@@ -590,7 +698,7 @@ class HTTPServiceUnavailable(HTTPServerError):
 
     :ref:`503`
     """
-    status_code = HTTP_503_SERVICE_UNAVAILABLE
+    status_code = HTTPStatus.HTTP_503_SERVICE_UNAVAILABLE
 
 
 class HTTPGatewayTimeout(HTTPServerError):
@@ -599,7 +707,7 @@ class HTTPGatewayTimeout(HTTPServerError):
 
     :ref:`504`
     """
-    status_code = HTTP_504_GATEWAY_TIMEOUT
+    status_code = HTTPStatus.HTTP_504_GATEWAY_TIMEOUT
 
 
 class HTTPHttpServerVersionNotSupported(HTTPServerError):
@@ -608,7 +716,7 @@ class HTTPHttpServerVersionNotSupported(HTTPServerError):
 
     :ref:`505`
     """
-    status_code = HTTP_505_HTTP_VERSION_NOT_SUPPORTED
+    status_code = HTTPStatus.HTTP_505_HTTP_VERSION_NOT_SUPPORTED
 
 
 class HTTPVariantAlsoNegotiates(HTTPServerError):
@@ -617,7 +725,7 @@ class HTTPVariantAlsoNegotiates(HTTPServerError):
 
     :ref:`506`
     """
-    status_code = HTTP_506_VARIANT_ALSO_NEGOTIATES
+    status_code = HTTPStatus.HTTP_506_VARIANT_ALSO_NEGOTIATES
 
 
 class HTTPInsufficientStorage(HTTPServerError):
@@ -626,7 +734,7 @@ class HTTPInsufficientStorage(HTTPServerError):
 
     :ref:`507`
     """
-    status_code = HTTP_507_INSUFFICIENT_STORAGE
+    status_code = HTTPStatus.HTTP_507_INSUFFICIENT_STORAGE
 
 
 class HTTPLoopDetected(HTTPServerError):
@@ -635,7 +743,7 @@ class HTTPLoopDetected(HTTPServerError):
 
     :ref:`508`
     """
-    status_code = HTTP_508_LOOP_DETECTED
+    status_code = HTTPStatus.HTTP_508_LOOP_DETECTED
 
 
 class HTTPNotExtended(HTTPServerError):
@@ -644,7 +752,7 @@ class HTTPNotExtended(HTTPServerError):
 
     :ref:`510`
     """
-    status_code = HTTP_510_NOT_EXTENDED
+    status_code = HTTPStatus.HTTP_510_NOT_EXTENDED
 
 
 class HTTPNetworkAuthenticationRequired(HTTPServerError):
@@ -653,61 +761,60 @@ class HTTPNetworkAuthenticationRequired(HTTPServerError):
 
     :ref:`511`
     """
-    status_code = HTTP_511_NETWORK_AUTHENTICATION_REQUIRED
+    status_code = HTTPStatus.HTTP_511_NETWORK_AUTHENTICATION_REQUIRED
 
 
 # Map errors codes to their related exception classes.
 ERROR_RESPONSE_MAPPING = {
     # 300
-    HTTP_300_MULTIPLE_CHOICES: HTTPMultipleChoices,
-    HTTP_301_MOVED_PERMANENTLY: HTTPMovedPermanently,
-    HTTP_302_FOUND: HTTPFound,
-    HTTP_303_SEE_OTHER: HTTPSeeOther,
-    HTTP_304_NOT_MODIFIED: HTTPNotModified,
-    HTTP_305_USE_PROXY: HTTPUseProxy,
-    HTTP_306_RESERVED: HTTPReserved,
-    HTTP_307_TEMPORARY_REDIRECT: HTTPTemporaryRedirect,
-    HTTP_308_PERMANENT_REDIRECT: HTTPPermanentRedirect,
+    HTTPStatus.HTTP_300_MULTIPLE_CHOICES: HTTPMultipleChoices,
+    HTTPStatus.HTTP_301_MOVED_PERMANENTLY: HTTPMovedPermanently,
+    HTTPStatus.HTTP_302_FOUND: HTTPFound,
+    HTTPStatus.HTTP_303_SEE_OTHER: HTTPSeeOther,
+    HTTPStatus.HTTP_304_NOT_MODIFIED: HTTPNotModified,
+    HTTPStatus.HTTP_305_USE_PROXY: HTTPUseProxy,
+    HTTPStatus.HTTP_306_RESERVED: HTTPReserved,
+    HTTPStatus.HTTP_307_TEMPORARY_REDIRECT: HTTPTemporaryRedirect,
+    HTTPStatus.HTTP_308_PERMANENT_REDIRECT: HTTPPermanentRedirect,
     # 400
-    HTTP_400_BAD_REQUEST: HTTPBadRequest,
-    HTTP_401_UNAUTHORIZED: HTTPUnauthorized,
-    HTTP_402_PAYMENT_REQUIRED: HTTPPaymentRequired,
-    HTTP_403_FORBIDDEN: HTTPForbidden,
-    HTTP_404_NOT_FOUND: HTTPNotFound,
-    HTTP_405_METHOD_NOT_ALLOWED: HTTPMethodNotAllowed,
-    HTTP_406_NOT_ACCEPTABLE: HTTPNotAcceptable,
-    HTTP_407_PROXY_AUTHENTICATION_REQUIRED: HTTPProxyAuthenticationRequired,
-    HTTP_408_REQUEST_TIMEOUT: HTTPRequestTimeout,
-    HTTP_409_CONFLICT: HTTPConflict,
-    HTTP_410_GONE: HTTPGone,
-    HTTP_411_LENGTH_REQUIRED: HTTPLengthRequired,
-    HTTP_412_PRECONDITION_FAILED: HTTPPreconditionFailed,
-    HTTP_413_REQUEST_ENTITY_TOO_LARGE: HTTPRequestEntityTooLarge,
-    HTTP_414_REQUEST_URI_TOO_LONG: HTTPRequestUriTooLong,
-    HTTP_415_UNSUPPORTED_MEDIA_TYPE: HTTPUnsupportedMediaType,
-    HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE: HTTPRequestedRangeNotSatisfiable,
-    HTTP_417_EXPECTATION_FAILED: HTTPExpectationFailed,
-    HTTP_418_IM_A_TEAPOT: HTTPImATeapot,
-    HTTP_421_MISDIRECTED_REQUEST: HTTPMisdirectedRequest,
-    HTTP_422_UNPROCESSABLE_ENTITY: HTTPUnprocessableEntity,
-    HTTP_424_FAILED_DEPENDENCY: HTTPFailedDependency,
-    HTTP_425_TOO_EARLY: HTTPTooEarly,
-    HTTP_426_UPGRADE_REQUIRED: HTTPUpgradeRequired,
-    HTTP_428_PRECONDITION_REQUIRED: HTTPPreconditionRequired,
-    HTTP_429_TOO_MANY_REQUESTS: HTTPTooManyRequests,
-    HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE: HTTPRequestHeaderFieldsTooLarge,
-    HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS: HTTPUnavailableForLegalReasons,
+    HTTPStatus.HTTP_400_BAD_REQUEST: HTTPBadRequest,
+    HTTPStatus.HTTP_401_UNAUTHORIZED: HTTPUnauthorized,
+    HTTPStatus.HTTP_402_PAYMENT_REQUIRED: HTTPPaymentRequired,
+    HTTPStatus.HTTP_403_FORBIDDEN: HTTPForbidden,
+    HTTPStatus.HTTP_404_NOT_FOUND: HTTPNotFound,
+    HTTPStatus.HTTP_405_METHOD_NOT_ALLOWED: HTTPMethodNotAllowed,
+    HTTPStatus.HTTP_406_NOT_ACCEPTABLE: HTTPNotAcceptable,
+    HTTPStatus.HTTP_407_PROXY_AUTHENTICATION_REQUIRED: HTTPProxyAuthenticationRequired,
+    HTTPStatus.HTTP_408_REQUEST_TIMEOUT: HTTPRequestTimeout,
+    HTTPStatus.HTTP_409_CONFLICT: HTTPConflict,
+    HTTPStatus.HTTP_410_GONE: HTTPGone,
+    HTTPStatus.HTTP_411_LENGTH_REQUIRED: HTTPLengthRequired,
+    HTTPStatus.HTTP_412_PRECONDITION_FAILED: HTTPPreconditionFailed,
+    HTTPStatus.HTTP_413_REQUEST_ENTITY_TOO_LARGE: HTTPRequestEntityTooLarge,
+    HTTPStatus.HTTP_414_REQUEST_URI_TOO_LONG: HTTPRequestUriTooLong,
+    HTTPStatus.HTTP_415_UNSUPPORTED_MEDIA_TYPE: HTTPUnsupportedMediaType,
+    HTTPStatus.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE: HTTPRequestedRangeNotSatisfiable,
+    HTTPStatus.HTTP_417_EXPECTATION_FAILED: HTTPExpectationFailed,
+    HTTPStatus.HTTP_418_IM_A_TEAPOT: HTTPImATeapot,
+    HTTPStatus.HTTP_421_MISDIRECTED_REQUEST: HTTPMisdirectedRequest,
+    HTTPStatus.HTTP_422_UNPROCESSABLE_ENTITY: HTTPUnprocessableEntity,
+    HTTPStatus.HTTP_424_FAILED_DEPENDENCY: HTTPFailedDependency,
+    HTTPStatus.HTTP_425_TOO_EARLY: HTTPTooEarly,
+    HTTPStatus.HTTP_426_UPGRADE_REQUIRED: HTTPUpgradeRequired,
+    HTTPStatus.HTTP_428_PRECONDITION_REQUIRED: HTTPPreconditionRequired,
+    HTTPStatus.HTTP_429_TOO_MANY_REQUESTS: HTTPTooManyRequests,
+    HTTPStatus.HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE: HTTPRequestHeaderFieldsTooLarge,
+    HTTPStatus.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS: HTTPUnavailableForLegalReasons,
     # 500
-    HTTP_500_INTERNAL_SERVER_ERROR: HTTPInternalServerError,
-    HTTP_501_NOT_IMPLEMENTED: HTTPNotImplemented,
-    HTTP_502_BAD_GATEWAY: HTTPBadGateway,
-    HTTP_503_SERVICE_UNAVAILABLE: HTTPServiceUnavailable,
-    HTTP_504_GATEWAY_TIMEOUT: HTTPGatewayTimeout,
-    HTTP_505_HTTP_VERSION_NOT_SUPPORTED: HTTPHttpServerVersionNotSupported,
-    HTTP_506_VARIANT_ALSO_NEGOTIATES: HTTPVariantAlsoNegotiates,
-    HTTP_507_INSUFFICIENT_STORAGE: HTTPInsufficientStorage,
-    HTTP_508_LOOP_DETECTED: HTTPLoopDetected,
-    HTTP_510_NOT_EXTENDED: HTTPNotExtended,
-    HTTP_511_NETWORK_AUTHENTICATION_REQUIRED: HTTPNetworkAuthenticationRequired,
+    HTTPStatus.HTTP_500_INTERNAL_SERVER_ERROR: HTTPInternalServerError,
+    HTTPStatus.HTTP_501_NOT_IMPLEMENTED: HTTPNotImplemented,
+    HTTPStatus.HTTP_502_BAD_GATEWAY: HTTPBadGateway,
+    HTTPStatus.HTTP_503_SERVICE_UNAVAILABLE: HTTPServiceUnavailable,
+    HTTPStatus.HTTP_504_GATEWAY_TIMEOUT: HTTPGatewayTimeout,
+    HTTPStatus.HTTP_505_HTTP_VERSION_NOT_SUPPORTED: HTTPHttpServerVersionNotSupported,
+    HTTPStatus.HTTP_506_VARIANT_ALSO_NEGOTIATES: HTTPVariantAlsoNegotiates,
+    HTTPStatus.HTTP_507_INSUFFICIENT_STORAGE: HTTPInsufficientStorage,
+    HTTPStatus.HTTP_508_LOOP_DETECTED: HTTPLoopDetected,
+    HTTPStatus.HTTP_510_NOT_EXTENDED: HTTPNotExtended,
+    HTTPStatus.HTTP_511_NETWORK_AUTHENTICATION_REQUIRED: HTTPNetworkAuthenticationRequired,
 }
-

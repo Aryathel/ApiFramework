@@ -5,23 +5,21 @@ Description: A RESTful API client for synchronous API applications.
 """
 
 # Stdlib modules
-from io import BufferedReader
 from json import JSONDecodeError
 import logging
+import types
 from typing import (
     Any,
     Dict,
     List,
     Optional,
     Type,
-    TypeVar,
     Union,
 )
 
 # 3rd party modules
 from pydantic import (
     BaseModel,
-    SecretStr,
 )
 from pydantic import (
     parse_obj_as,
@@ -30,19 +28,17 @@ from pydantic import (
 from yarl import URL
 
 # Local modules
+from ..constants import ClientBranch
 from ..errors import (
     ERROR_RESPONSE_MAPPING,
     HTTPError,
-    MISSING,
     ResponseParseError,
-    SyncClientError,
 )
-from ..framework import Response
+from ..framework import _ClientInternal
+from ..models import Response
 from ..utils import (
     flatten_obj,
     flatten_params,
-    merge_dicts,
-    validate_type,
 )
 from .utils import (
     chunk_file_reader,
@@ -76,6 +72,7 @@ _log: logging.Logger = logging.getLogger("arya_api_framework.Sync")
 #        Typing
 # ======================
 DictStrAny = Dict[str, Any]
+DictStrModule = Dict[str, types.ModuleType]
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
@@ -87,14 +84,13 @@ RequestResponse = Union[
     Union[Response, List[Response]],
     Union[DictStrAny, List[DictStrAny]]
 ]
-SessionT = TypeVar('SessionT', bound='Session')
 
 
 # ======================
 #     Sync Client
 # ======================
-class SyncClient:
-    """ The synchronous API client class. Utilizes the :resource:`requests <requests>` module.
+class SyncClient(_ClientInternal):
+    """ The core API framework client for synchronous API integration.
 
     Arguments
     ---------
@@ -104,7 +100,7 @@ class SyncClient:
             Warning
             -------
                 This should always either be passed as an argument here or as a subclass argument. If neither are given,
-                an :class:`errors.SyncClientError` exception will be raised.
+                an :class:`errors.ClientError` exception will be raised.
 
     Keyword Args
     ------------
@@ -132,7 +128,7 @@ class SyncClient:
     ----
         All of the arguments that can be used when instantiating a client can also be used as subclass parameters:
 
-        .. code-blocK:: python
+        .. code-block:: python
 
             class MyClient(SyncClient, uri="https://exampleurl.com", parameters={"arg1": "abc"}):
                 pass
@@ -143,13 +139,25 @@ class SyncClient:
     Attributes
     ----------
         closed: :py:class:`bool`
+            * |readonly|
+
             Whether of not the internal :py:class:`requests.Session` has been closed. If the session has been closed,
             the client will not allow any further requests to be made.
+        extensions: Mapping[:py:class:`str`, :py:class:`types.ModuleType`]
+            * |readonly|
+
+            A mapping of extensions by name to extension.
         uri: Optional[:py:class:`str`]
+            * |readonly|
+
             The base URI that will prepend all requests made using the client.
         uri_root: Optional[:py:class:`str`]
+            * |readonly|
+
             The root origin of the :attr:`uri` given to the client.
         uri_path: Optional[:py:class:`str`]
+            * |readonly|
+
             The path from the :attr:`uri_root` to the :attr:`uri` path.
         headers: Optional[:py:class:`dict`]
             The default headers that will be passed into every request, unless overridden.
@@ -165,229 +173,22 @@ class SyncClient:
                 By default, an internal exception mapping is used. See :ref:`exceptions`.
 
         rate_limit: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |readonly|
+
             The number of requests per :attr:`rate_limit_interval` the client is allowed to send.
         rate_limit_interval: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |readonly|
+
             The interval, in seconds, over which to apply a rate limit for :attr:`rate_limit` requests per interval.
         is_rate_limited: :py:class:`bool`
+            * |readonly|
+
             Whether or not the client has a rate limit set.
     """
-
     # ======================
     #   Private Attributes
     # ======================
-    _headers: Optional[Dict[str, Any]] = None
-    _cookies: Optional[Dict[str, Any]] = None
-    _parameters: Optional[Dict[str, Any]] = None
-    _error_responses: Optional[ErrorResponses] = None
-    _rate_limit_interval: Optional[Union[int, float]] = 1
-    _rate_limit: Optional[Union[int, float]] = None
-    _rate_limited: bool = False
-    _base: Optional[URL] = MISSING
-    _session: SessionT
-    _closed: bool = False
-
-    # ======================
-    #    Initialization
-    # ======================
-    def __init__(
-            self,
-            uri: Optional[str] = None,
-            *args,
-            headers: Optional[Headers] = None,
-            cookies: Optional[Cookies] = None,
-            parameters: Optional[Parameters] = None,
-            error_responses: Optional[ErrorResponses] = None,
-            bearer_token: Optional[Union[str, SecretStr]] = None,
-            rate_limit: Optional[Union[int, float]] = None,
-            rate_limit_interval: Optional[Union[int, float]] = None,
-            **kwargs
-    ) -> None:
-        if not is_sync:
-            raise SyncClientError(
-                "The sync context is unavailable. Try installing with `python -m pip install arya-api-framework[sync]`."
-            )
-
-        if uri:
-            if validate_type(uri, str):
-                self._base = URL(uri.rstrip('/'))
-
-        if not self.uri:
-            raise SyncClientError(
-                "The client needs a base uri specified. "
-                "This can be done through init parameters, or subclass parameters."
-            )
-
-        if bearer_token:
-            if validate_type(bearer_token, SecretStr, err=False):
-                bearer_token = bearer_token.get_secret_value()
-
-            if not headers:
-                headers = {}
-
-            headers["Authorization"] = f"Bearer {bearer_token}"
-
-        self._cookies = merge_dicts(self.cookies, cookies) or {}
-        self._parameters = merge_dicts(self.parameters, flatten_params(parameters)) or {}
-        self._headers = merge_dicts(self.headers, headers) or {}
-        self._error_responses = merge_dicts(self.error_responses, error_responses) or {}
-
-        if rate_limit:
-            if validate_type(rate_limit, [int, float]):
-                self._rate_limit = rate_limit
-        if rate_limit_interval:
-            if validate_type(rate_limit_interval, [int, float]):
-                self._rate_limit_interval = rate_limit_interval
-
-        if self._rate_limit:
-            self.request = sleep_and_retry(
-                limits(calls=self._rate_limit, period=self._rate_limit_interval)(self.request)
-            )
-            self._rate_limited = True
-
-        self._session = Session()
-        self._session.headers = self.headers
-        self._session.cookies = cookiejar_from_dict(self.cookies)
-        self._session.params = self.parameters
-
-        if hasattr(self, '__post_init__'):
-            self.__post_init__(*args, **kwargs)
-
-    def __post_init__(self, *args, **kwargs) -> None:
-        """This method is run after the ``__init__`` method is called, and is passed any extra arguments or
-        keyword arguments that the regular init method did not recognize.
-
-        Tip
-        ----
-            By using this method, it becomes unnecessary to override the ``__init__`` method. Instead, any extra
-            parameters can be provided in this method, which has no implementation at default.
-
-        Example
-        -------
-            This is a quick example showing how one might add a default ``apiKey`` parameter to their custom API client
-            using the :meth:`__post_init__` method.
-
-            .. code-block:: python
-
-                class MySyncClient(SyncClient):
-                    api_key: str
-
-                    def __post_init__(self, *args, api_key: str = None, **kwargs):
-                        self.api_key = api_key
-
-                        self.parameters['apiKey'] = self.api_key
-
-                client = MySyncClient('https://exampleurl.com', api_key='mysecretkey')
-
-                # >>> client.parameters
-                {
-                    "apiKey": "mysecretkey"
-                }
-        """
-        pass
-
-    def __init_subclass__(
-            cls,
-            uri: Optional[str] = None,
-            headers: Optional[Headers] = None,
-            cookies: Optional[Cookies] = None,
-            parameters: Optional[Parameters] = None,
-            bearer_token: Optional[Union[str, SecretStr]] = None,
-            error_responses: Optional[ErrorResponses] = None,
-            rate_limit: Optional[Union[int, float]] = None,
-            rate_limit_interval: Optional[Union[int, float]] = None
-    ) -> None:
-        if uri:
-            if validate_type(uri, str):
-                cls._base = URL(uri.rstrip('/'))
-        if bearer_token:
-            if validate_type(bearer_token, SecretStr, err=False):
-                bearer_token = bearer_token.get_secret_value()
-
-            if not headers:
-                headers = {}
-
-            headers["Authorization"] = f"Bearer {bearer_token}"
-        cls._headers = flatten_obj(headers)
-        cls._cookies = flatten_obj(cookies)
-        cls._parameters = flatten_params(parameters)
-        cls._error_responses = error_responses or {}
-        if rate_limit:
-            if validate_type(rate_limit, [int, float]):
-                cls._rate_limit = rate_limit
-        if rate_limit_interval:
-            if validate_type(rate_limit_interval, [int, float]):
-                cls._rate_limit_interval = rate_limit_interval
-
-    # ======================
-    #      Properties
-    # ======================
-    # General Information
-    @property
-    def closed(self) -> bool:
-        return self._closed
-
-    # URI Options
-    @property
-    def uri(self) -> Optional[str]:
-        return str(self._base) if self._base is not MISSING else None
-
-    @property
-    def uri_root(self) -> Optional[str]:
-        return str(self._base.origin()) if self._base is not MISSING else None
-
-    @property
-    def uri_path(self) -> Optional[str]:
-        return str(self._base.relative()) if self._base is not MISSING else None
-
-    # Default Request Settings
-    @property
-    def headers(self) -> Optional[Headers]:
-        return self._headers
-
-    @headers.setter
-    def headers(self, headers: Headers) -> None:
-        self._headers = flatten_obj(headers) or {}
-        self._session.headers = self._headers
-
-    @property
-    def cookies(self) -> Optional[Cookies]:
-        return self._cookies
-
-    @cookies.setter
-    def cookies(self, cookies: Cookies) -> None:
-        self._cookies = flatten_obj(cookies) or {}
-        self._session.cookies = self._cookies
-
-    @property
-    def parameters(self) -> Optional[Parameters]:
-        return self._parameters
-
-    @parameters.setter
-    def parameters(self, params: Parameters) -> None:
-        self._parameters = flatten_params(params) or {}
-        self._session.params = self._parameters
-
-    @property
-    def error_responses(self) -> Optional[ErrorResponses]:
-        return self._error_responses
-
-    @error_responses.setter
-    @validate_arguments()
-    def error_responses(self, error_responses: ErrorResponses) -> None:
-        self._error_responses = error_responses or {}
-
-    # Rate Limits
-    @property
-    def rate_limit(self) -> Optional[Union[int, float]]:
-        return self._rate_limit
-
-    @property
-    def rate_limit_interval(self) -> Optional[Union[int, float]]:
-        return self._rate_limit_interval
-
-    @property
-    def is_rate_limited(self) -> bool:
-        return self._rate_limited
+    _branch = ClientBranch.sync
 
     # ======================
     #    Request Methods
@@ -464,7 +265,7 @@ class SyncClient:
         """
 
         if self.closed:
-            _log.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
+            self.logger.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
         if path and not path.startswith('/'):
@@ -488,7 +289,7 @@ class SyncClient:
                 timeout=timeout,
                 files=files
         ) as response:
-            _log.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
+            self.logger.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
 
             if response.ok:
                 try:
@@ -1032,7 +833,7 @@ class SyncClient:
         )
 
     # ======================
-    #    General methods
+    #    General Methods
     # ======================
     def close(self):
         """
@@ -1041,3 +842,26 @@ class SyncClient:
         if not self._closed:
             self._session.close()
             self._closed = True
+
+    # ======================
+    #   Private Methods
+    # ======================
+    def _init_rate_limit(self) -> None:
+        if self.rate_limit:
+            self.request = sleep_and_retry(
+                limits(calls=self.rate_limit, period=self.rate_limit_interval)(self.request),
+                self.logger
+            )
+            self._rate_limited = True
+
+    def _update_session_headers(self) -> None:
+        if self._session:
+            self._session.headers = self._headers
+
+    def _update_session_cookies(self) -> None:
+        if self._session:
+            self._session.cookies = self._cookies
+
+    def _update_session_parameters(self) -> None:
+        if self._session:
+            self._session.params = self._parameters

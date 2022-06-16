@@ -21,7 +21,7 @@ from pydantic import validate_arguments
 
 # Local modules
 from .errors import ValidationError
-from .framework import BaseModel
+from .models import BaseModel
 
 # Define exposed objects
 __all__ = [
@@ -82,7 +82,9 @@ def validate_type(obj: Any, target: Union[Type, List[Type]], err: bool = True) -
 
     return False
 
-
+# =======================
+#   Argument Management
+# =======================
 @validate_arguments()
 def flatten_obj(obj: Optional[DictOrModel]) -> Dict:
     """Flattens a given object into a :py:class:`dict`.
@@ -201,3 +203,10 @@ def merge_dicts(
         del merged[k]
 
     return merged
+
+
+# ======================
+#        Methods
+# ======================
+def _is_submodule(parent: str, child: str) -> bool:
+    return parent == child or child.startswith(parent + '.')

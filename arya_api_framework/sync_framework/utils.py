@@ -6,6 +6,8 @@ Description: Utility functions for general use within the sync branch.
 
 # Stdlib modules
 from typing import (
+    Any,
+    Callable,
     Generator,
     Union,
 )
@@ -36,6 +38,26 @@ _log = logging.getLogger('arya_api_framework.Sync')
 
 
 # ======================
+#      Decorators
+# ======================
+def sleep_and_retry(func: Callable[..., Any], log: logging.Logger):
+    """|deco|
+
+    This decorator wraps a :resource:`ratelimited <ratelimit>` function, causing it to sleep until the rate limit resets,
+    then reruns the failed function.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except RateLimitException as exception:
+                log.info(f"Applying rate limit: Sleeping for {exception.period_remaining}s")
+                time.sleep(exception.period_remaining)
+    return wrapper
+
+
+# ======================
 #       Methods
 # ======================
 @validate_arguments
@@ -58,23 +80,3 @@ def chunk_file_reader(file: Union[str, Path]) -> Generator[bytes, None, None]:
         while chunk:
             yield chunk
             chunk = f.read(64 * 1024)
-
-
-# ======================
-#      Decorators
-# ======================
-def sleep_and_retry(func):
-    """|deco|
-
-    This decorator wraps a :resource:`ratelimited <ratelimit>` function, causing it to sleep until the rate limit resets,
-    then reruns the failed function.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except RateLimitException as exception:
-                _log.info(f"Applying rate limit: Sleeping for {exception.period_remaining}s")
-                time.sleep(exception.period_remaining)
-    return wrapper
