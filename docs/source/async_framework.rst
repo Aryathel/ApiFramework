@@ -6,5 +6,6 @@ Async Client
 .. attributetable:: AsyncClient
 
 .. autoclass:: AsyncClient
-    :members:
-    :special-members: __post_init__
+    :inherited-members:
+
+    .. automethod:: __post_init__

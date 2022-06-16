@@ -1,24 +1,133 @@
-{%- extends "basic/genindex.html" %}
+{#
+    genindex.html
+    ~~~~~~~~~~~~~~~~~~~
+
+    Template for an "all-in-one" index.
+
+    :copyright: Copyright 2007-2022 by the Sphinx team, see AUTHORS.
+    :license: BSD, see LICENSE for details.
+#}
+{%- extends "layout.html" %}
+{% set title = _('Index') %}
+
+{% macro indexentries(firstname, links) %}
+  {%- if links -%}
+    <a href="{{ links[0][1] }}">
+    {%- if links[0][0] %}<strong>{% endif -%}
+    {{ links[0][1] }}
+    {%- if links[0][0] %}</strong>{% endif -%}
+    </a>
+
+    {%- for ismain, link in links[1:] -%}
+      , <a href="{{ link }}">{% if ismain %}<strong>{% endif -%}
+      [{{ loop.index }}]
+      {%- if ismain %}</strong>{% endif -%}
+      </a>
+    {%- endfor %}
+  {%- else %}
+    {{ firstname|e }}
+  {%- endif %}
+{% endmacro %}
 
 {% block body %}
-  {{ super() }}
-  <!-- Inject some JavaScript to convert the index names into something useful. -->
-  <script>
-    let elements = document.querySelectorAll("table.indextable a");
 
-    // this is pretty finicky but it should work.
-    for(let el of elements) {
-      let key = el.getAttribute('href').split('#', 2)[1]
-      key = key.replace('.params', '');
-      if(!key.startsWith('arya_api_framework.')) {
-        continue;
-      }
+<h1 id="index">{{ _('Index') }}</h1>
 
-      if(el.textContent.indexOf('()') !== -1) {
-        key = key + '()'
-      }
-      el.textContent = key;
-    }
-    document.querySelectorAll("td").forEach(el => el.style.width = 'auto');
-  </script>
+<div class="genindex-jumpbox">
+    {% for key, dummy in genindexentries -%}
+        {% set entries -%}
+            {%- for entry in dummy %}
+                {%- if '.params.' not in entry %}
+                    {{ entry }}
+                {% endif -%}
+            {% endfor -%}
+        {%- endset %}
+        {% if entries|length > 0 -%}
+        <a href="#{{ key }}"><strong>{{ key }}</strong></a>
+        {% if not loop.last %}| {% endif %}
+        {%- endif %}
+    {%- endfor %}
+</div>
+
+{% for key, entries in genindexentries %}
+    <hr>
+    <h2 id="{{ key }}">{{ key }}</h2>
+    <table style="width: 100%" class="indextable genindextable"><tr>
+        {%- set column = entries -%}
+        <td style="width: 33%; vertical-align: top;"><ul>
+        {%- for entryname, (links, subitems, _) in column %}
+            <li>{{ indexentries(entryname, links) }}
+            {%- if subitems %}
+                <ul>
+                {%- for subentryname, subentrylinks in subitems %}
+                    <li>{{ indexentries(subentryname, subentrylinks) }}</li>
+                {%- endfor %}
+                </ul>
+            {%- endif -%}
+            </li>
+        {%- endfor %}
+        </ul></td>
+    </tr></table>
+{% endfor %}
+    <!-- Inject some JavaScript to convert the index names into something useful. -->
+    <script>
+        let elements = document.querySelectorAll("table.indextable a");
+
+        // this is pretty finicky but it should work.
+        for(let el of elements) {
+            let key = el.getAttribute('href').split('#', 2)[1]
+
+            if(!key.startsWith('arya_api_framework.')) {
+                continue;
+            }
+
+            // Remove parameter links (to reduce clutter)
+            if (key.includes('.params.')) { el.parentElement.remove(); continue; }
+
+            if(el.textContent.indexOf('()') !== -1) {
+                key = key + '()'
+            }
+            el.textContent = key;
+        }
+
+        // Move the elements into separate columns *after* replacing the names and
+        // removing parameter links.
+        elements = document.querySelectorAll("table.indextable");
+        for (let elem of elements) {
+            let elems = elem.getElementsByTagName('li');
+
+            for (var items=[], i=elems.length; i;) items[--i] = elems[i];
+
+            let half = Math.ceil(items.length / 2);
+
+            let first = items.slice(0, half);
+            let first_list = document.createElement('ul');
+            first_list.replaceChildren(...first);
+            let second = items.slice(-half);
+            let second_list = document.createElement('ul');
+            second_list.replaceChildren(...second);
+
+            let template = elem.getElementsByTagName('td')[0];
+            template.replaceChildren(first_list);
+            let second_col = template.cloneNode();
+            second_col.replaceChildren(second_list);
+
+            template.parentNode.insertBefore(second_col, template.nextSibling);
+        }
+
+        document.querySelectorAll("td").forEach( el => el.style.width = 'auto' );
+    </script>
+{% endblock %}
+
+{% block sidebarrel %}
+{% if split_index %}
+   <h4>{{ _('Index') }}</h4>
+   <p>{% for key, dummy in genindexentries -%}
+   <a href="{{ pathto('genindex-' + key) }}"><strong>{{ key }}</strong></a>
+     {% if not loop.last %}| {% endif %}
+   {%- endfor %}</p>
+
+   <p><a href="{{ pathto('genindex-all') }}"><strong>{{ _('Full index on one page') }}</strong></a></p>
+{% endif %}
+   {{ super() }}
 {% endblock %}

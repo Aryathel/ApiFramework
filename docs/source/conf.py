@@ -131,22 +131,8 @@ rst_prolog = """
 .. _sync_rate_limit: https://github.com/tomasbasham/ratelimit
 .. |async_rate_limit| replace:: *rate limits*
 .. _async_rate_limit: https://aiolimiter.readthedocs.io/en/latest/
-"""
 
-rst_epilog = """
-.. |check| raw:: html
-
-    <span class="checklist-container">
-        <input class="checklist-hide" checked="" type="checkbox" disabled="">
-        <span class="checklist"></span>
-    </span>
-
-.. |uncheck| raw:: html
-    
-    <span class="checklist-container">
-        <input class="checklist-hide" type="checkbox" disabled="">
-        <span class="checklist"></span>
-    </span>
+.. |readonly| replace:: *This is a read-only attribute.*
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

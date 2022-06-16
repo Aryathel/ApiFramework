@@ -432,7 +432,7 @@ By doing so, you now have the option to search by those fields provided in the q
         # [User(id=1 ...)]
 
 Closing Thoughts
-================
+~~~~~~~~~~~~~~~~
 
 From here on out, it's up to you! This library is left very open-ended for a reason. This is intended to be utilized
 as a generalized base for crafting API libraries, so the implementation of data validation, individual request methods,

@@ -6,5 +6,6 @@ Sync Client
 .. attributetable:: SyncClient
 
 .. autoclass:: SyncClient
-    :members:
-    :special-members: __post_init__
+    :inherited-members:
+
+    .. automethod:: __post_init__

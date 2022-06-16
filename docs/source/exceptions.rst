@@ -10,6 +10,22 @@ General Exceptions
 .. autoexception:: MISSING
 .. autoexception:: ValidationError
 
+Extension Exceptions
+--------------------
+
+.. autoexception:: ExtensionError
+.. attributetable:: ExtensionError
+.. autoexception:: ExtensionNotFound
+.. attributetable:: ExtensionNotFound, ExtensionError
+.. autoexception:: ExtensionAlreadyLoaded
+.. attributetable:: ExtensionAlreadyLoaded, ExtensionError
+.. autoexception:: ExtensionNotLoaded
+.. attributetable:: ExtensionNotLoaded, ExtensionError
+.. autoexception:: ExtensionEntryPointError
+.. attributetable:: ExtensionEntryPointError, ExtensionError
+.. autoexception:: ExtensionFailed
+.. attributetable:: ExtensionFailed, ExtensionError
+
 Client Exceptions
 -----------------
 
@@ -198,6 +214,12 @@ Exception Hierarchy
         - :exc:`FrameworkException`
             - :exc:`MISSING`
             - :exc:`ValidationError`
+            - :exc:`ExtensionError`
+                - :exc:`ExtensionNotFound`
+                - :exc:`ExtensionAlreadyLoaded`
+                - :exc:`ExtensionNotLoaded`
+                - :exc:`ExtensionEntryPointError`
+                - :exc:`ExtensionFailed`
             - :exc:`ClientError`
                 - :exc:`AsyncClientError`
                 - :exc:`SyncClientError`
