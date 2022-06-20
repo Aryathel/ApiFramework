@@ -1,5 +1,3 @@
-:orphan:
-
 .. _logging_setup:
 
 Logging
@@ -48,7 +46,7 @@ for the clients included in the API Framework:
 
 .. note::
 
-    It is recommended that you enable logging at least to the ``Debug`` level, as information on the status of each
+    It is recommended that you enable logging at least to the ``Info`` level, as information on the status of each
     API request will be shown there. To avoid this clogging your stdout, you might also want to log events to a file.
 
 For more information about how to handle logging, check out the :mod:`logging` module directly.

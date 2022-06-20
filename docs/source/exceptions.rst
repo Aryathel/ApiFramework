@@ -7,7 +7,6 @@ General Exceptions
 ------------------
 
 .. autoexception:: FrameworkException
-.. autoexception:: MISSING
 .. autoexception:: ValidationError
 
 Extension Exceptions
@@ -32,6 +31,14 @@ Client Exceptions
 .. autoexception:: ClientError
 .. autoexception:: AsyncClientError
 .. autoexception:: SyncClientError
+
+SubClient Exceptions
+--------------------
+
+.. autoexception:: SubClientError
+.. autoexception:: SubClientAlreadyLoaded
+.. autoexception:: SubClientParentSet
+.. autoexception:: SubClientNotLoaded
 
 Request Exceptions
 ------------------
@@ -212,7 +219,6 @@ Exception Hierarchy
 .. exception_hierarchy::
     - :exc:`Exception`
         - :exc:`FrameworkException`
-            - :exc:`MISSING`
             - :exc:`ValidationError`
             - :exc:`ExtensionError`
                 - :exc:`ExtensionNotFound`
@@ -224,6 +230,10 @@ Exception Hierarchy
                 - :exc:`AsyncClientError`
                 - :exc:`SyncClientError`
                 - :exc:`ResponseParseError`
+                - :exc:`SubClientError`
+                    - :exc:`SubClientAlreadyLoaded`
+                        - :exc:`SubClientParentSet`
+                    - :exc:`SubClientNotLoaded`
             - :exc:`HTTPError`
                 - :exc:`HTTPRedirect`
                     - :exc:`HTTPMultipleChoices`

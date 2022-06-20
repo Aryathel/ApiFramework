@@ -52,9 +52,10 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
+    'enum_tools.autoenum',
     'sphinx_paramlinks',
     'sphinxcontrib_trio',
-    'sphinx_toolbox.shields',
+    'sphinx_toolbox.decorators',
     'details',
     'exception_hierarchy',
     'attributetable',
@@ -72,6 +73,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'requests': ('https://requests.readthedocs.io/en/stable/', None),
     'aiohttp': ('https://docs.aiohttp.org/en/stable/', None),
+    'yarl': ('https://yarl.readthedocs.io/en/latest/', None),
 }
 
 # External links
@@ -109,30 +111,34 @@ resource_links = {
     'aiohttp': 'https://docs.aiohttp.org/en/stable/',
     'requests': 'https://requests.readthedocs.io/en/latest/',
     'pydantic': 'https://pydantic-docs.helpmanual.io/',
-    'ratelimit': 'https://pypi.org/project/ratelimit/'
+    'ratelimit': 'https://pypi.org/project/ratelimit/',
+    'yarl': 'https://pypi.org/project/yarl/',
 }
 
 rst_prolog = """
-.. |coro| replace:: This function is a |coroutine_link|_.
-.. |maybecoro| replace:: This function *could be a* |coroutine_link|_.
+.. |coro| replace:: *This function is a* |coroutine_link|_.
+.. |maybecoro| replace:: *This function could be a* |coroutine_link|_.
 .. |coroutine_link| replace:: *coroutine*
 .. _coroutine_link: https://docs.python.org/3/library/asyncio-task.html#coroutine
 
-.. |deco| replace:: This function is a decorator.
+.. |deco| replace:: *This function is a decorator*.
 
-.. |validated_method| replace:: This method enforces |data_validation|_.
-.. |validated_class| replace:: This class enforces |data_validation|_.
+.. |validated_method| replace:: *This method enforces* |data_validation|_.
+.. |validated_class| replace:: *This class enforces* |data_validation|_.
 .. |data_validation| replace:: *data validation*
 .. _data_validation: https://pydantic-docs.helpmanual.io/usage/validation_decorator/
 
-.. |sync_rate_limited_method| replace:: This method *can* enforce |sync_rate_limit|_.
-.. |async_rate_limited_method| replace:: This method *can* enforce |async_rate_limit|_.
+.. |rate_limited_method| replace:: *This method can enforce rate limits*.
+.. |sync_rate_limited_method| replace:: *This method can enforce* |sync_rate_limit|_.
+.. |async_rate_limited_method| replace:: *This method can enforce* |async_rate_limit|_.
 .. |sync_rate_limit| replace:: *rate limits*
 .. _sync_rate_limit: https://github.com/tomasbasham/ratelimit
 .. |async_rate_limit| replace:: *rate limits*
 .. _async_rate_limit: https://aiolimiter.readthedocs.io/en/latest/
 
 .. |readonly| replace:: *This is a read-only attribute.*
+.. |positional| replace:: *This is a positional only argument.*
+.. |kwargonly| replace:: *This is a keyword only argument.*
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

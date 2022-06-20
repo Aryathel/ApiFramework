@@ -103,11 +103,129 @@ To install the async branch:
 
 Getting Started
 ---------------
+
+This example is a minimal example. However, it is still much more than most libraries have
+for a getting started page. This is because of this modules usage of :resource:`Pydantic <pydantic>`
+for data validation from API responses. If you would like a breakdown of this, please see the
+:ref:`quickstart-breakdown` section, or take a look at the available :ref:`guides`.
+
+.. code-block:: python
+    :caption: models.py
+    :linenos:
+
+    from arya_api_framework import BaseModel, Response
+
+    # Data models
+    class Geo(BaseModel):
+        lat: float
+        lng: float
+
+    class Address(BaseModel):
+        street: str
+        suite: str
+        city: str
+        zipcode: str
+        geo: Geo
+
+    class Company(BaseModel):
+        name: str
+        catchPhrase: str
+        bs: str
+
+    class User(Response):
+        id: int
+        name: str
+        email: str
+        address: Address
+        phone: str
+        website: str
+        company: Company
+
+    # Query models
+    class AddressQuery(BaseModel):
+        city: Optional[str]
+
+    class UserQuery(BaseModel):
+        username: Optional[str]
+        address: Optional[AddressQuery]
+
+.. code-block:: python
+    :caption: api.py
+    :linenos:
+
+    from arya_api_framework import SyncClient
+    from pydantic import validate_arguments
+
+    from models import User, UserQuery, AddressQuery
+
+    class PlaceholderClient(SyncClient, uri="https://jsonplaceholder.typicode.com"):
+        def get_users(self):
+            # https://jsonplaceholder.typicode.com/users
+            return self.get('/users', response_format=User)
+
+        @validate_arguments()
+        def get_user_by_id(self, id: int):
+            # https://jsonplaceholder.typicode.com/users/<id>
+            return self.get(f'/users/{id}', response_format=User)
+
+        @validate_arguments()
+        def search_user_by_username(self, name: str):
+            # https://jsonplaceholder.typicode.com/users?username=<name>
+            query = UserQuery(username=name)
+
+            return self.get('/users', parameters=query, response_format=User)
+
+        @validate_arguments()
+        def search_user_by_city(self, city: str):
+            # https://jsonplaceholder.typicode.com/users?address.city=<city>
+            query = UserQuery(address=AddressQuery(city=city))
+
+            return self.get('/users', parameters=query, response_format=User)
+
+        @validate_arguments()
+        def search_user_by_username_and_city(self, name: str, city: str):
+            # https://jsonplaceholder.typicode.com/users?username=<name>&address.city=<city>
+            query = UserQuery(username=name, address=AddressQuery(city=city))
+
+            return self.get('/users', parameters=query, response_format=User)
+
+.. code-block:: python
+    :caption: main.py
+    :linenos:
+
+    from api import PlaceholderClient
+
+    if __name__ == "__main__":
+        client = PlaceholderClient()
+
+        users = client.get_users()
+        print(users)
+
+        user = client.get_user_by_id(3)
+        print(user)
+
+        lookup = client.search_user_by_username("Bret")
+        print(lookup)
+
+        lookup = client.search_user_by_city("Gwenborough")
+        print(lookup)
+
+        lookup = client.search_user_by_username_and_city("Bret", "Gwenborough")
+        print(lookup)
+
+.. _guides:
+
+Guides
+------
+These guides are intended to be a place where those looking to really take advantage
+of the features this system has can get started.
+
 .. toctree::
     :maxdepth: 1
 
-    quickstart
-    logging
+    guides/quickstart
+    guides/logging
+    guides/subclients
 
 .. _api_reference:
 
@@ -116,10 +234,7 @@ API Reference
 .. toctree::
     :maxdepth: 2
 
-    sync_framework
-    async_framework
-    models
-    utils
+    framework
     exceptions
 
 Information
@@ -129,7 +244,7 @@ Here lies a bunch of random information related to the project at least a little
 .. toctree::
     :maxdepth: 2
 
-    statuses
+    info/statuses
 
 Glossary
 --------

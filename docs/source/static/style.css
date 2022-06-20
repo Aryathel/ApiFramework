@@ -34,7 +34,10 @@ Historically however, thanks to:
     --grey-8: #2a2a2e;
     --black: #0c0c0d;
 
-    --logo-purple: #8566D9;
+    --purple-1: #2d224a;
+    --purple-2: #8566D9;
+    --purple-3: #6e5f96;
+    --purple-4: #9686c2;
 
     --blue-1: #3399ff;
     --blue-2: #0a84ff;
@@ -49,7 +52,7 @@ Historically however, thanks to:
     --link-text: var(--blue-2);
     --link-hover-text: var(--blue-6);
     --main-text: var(--black);
-    --mobile-nav-background: var(--black);
+    --mobile-nav-background: var(--purple-1);
     --mobile-nav-text: var(--white);
     --mobile-nav-hover-text: var(--white);
     --mobile-nav-header-text: var(--white);
@@ -87,7 +90,9 @@ Historically however, thanks to:
     --codeblock-text: var(--grey-6);
     --inline-code-background: var(--grey-3);
     --xref-code-background: transparent;
-    --api-entry-background: var(--grey-2);
+    --api-entry-background: var(--purple-2);
+    --api-meth-background: var(--purple-3);
+    --api-attr-background: var(--purple-4);
     --table-header-background: var(--grey-3);
     --table-text: var(--black);
     --table-border: var(--grey-4);
@@ -150,7 +155,9 @@ Historically however, thanks to:
     --codeblock-text: var(--grey-1);
     --inline-code-background: var(--grey-8);
     --xref-code-background: transparent;
-    --api-entry-background: var(--grey-6);
+    --api-entry-background: var(--purple-2);
+    --api-meth-background: var(--purple-3);
+    --api-attr-background: var(--purple-4);
     --table-header-background: var(--grey-6);
     --table-text: var(--grey-1);
     --table-border: var(--grey-4);
@@ -169,7 +176,7 @@ Historically however, thanks to:
     --attribute-table-entry-hover-text: var(--blue-1);
     --attribute-table-badge: var(--grey-4);
     --highlighted-text: rgba(250, 166, 26, 0.2);
-    --checklist-checked: var(--logo-purple);
+    --checklist-checked: var(--purple-2);
     --checklist-unchecked: var(--grey-8);
 }
 
@@ -1122,14 +1129,26 @@ dl.class {
 dl.data > dt,
 dl.describe > dt,
 dl.function > dt,
-dl.attribute > dt,
-dl.classmethod > dt,
-dl.method > dt,
-dl.property > dt,
 dl.class > dt,
-dl.exception > dt {
+dl.exception > dt,
+dl.decorator > dt {
     background-color: var(--api-entry-background);
     padding: 1px 10px;
+    border-radius: 4px;
+}
+
+dl.property > dt,
+dl.attribute > dt {
+    background-color: var(--api-attr-background);
+    padding: 1px 10px;
+    border-radius: 4px;
+}
+
+dl.classmethod > dt,
+dl.method > dt {
+    background-color: var(--api-meth-background);
+    padding: 1px 10px;
+    border-radius: 4px;
 }
 
 /* bug in sphinx: https://github.com/sphinx-doc/sphinx/issues/9384 */
@@ -1300,7 +1319,7 @@ div.code-block-caption {
     }
 
     header {
-        background-color: var(--black);
+        background-color: var(--purple-1);
     }
 
     header > nav {

@@ -1,5 +1,7 @@
 .. currentmodule:: arya_api_framework
 
+.. _quickstart:
+
 Quickstart
 ==========
 Welcome to Arya's API Framework!
@@ -63,7 +65,7 @@ Full Example
     from arya_api_framework import SyncClient
     from pydantic import validate_arguments
 
-    from models.py import User, UserQuery, AddressQuery
+    from models import User, UserQuery, AddressQuery
 
     class PlaceholderClient(SyncClient, uri="https://jsonplaceholder.typicode.com"):
         def get_users(self):
@@ -119,6 +121,8 @@ Full Example
 
         lookup = client.search_user_by_username_and_city("Bret", "Gwenborough")
         print(lookup)
+
+.. _quickstart-breakdown:
 
 Breakdown
 ~~~~~~~~~
