@@ -20,7 +20,6 @@ from .constants import HTTPStatus
 # Define exposed objects
 __all__ = [
     # General
-    "MISSING",
     "ValidationError",
     "ExtensionError",
     "ExtensionNotFound",
@@ -32,6 +31,10 @@ __all__ = [
     "ClientError",
     "AsyncClientError",
     "SyncClientError",
+    "SubClientError",
+    "SubClientAlreadyLoaded",
+    "SubClientParentSet",
+    "SubClientNotLoaded",
     # Requests
     "ResponseParseError",
     'HTTPError',
@@ -106,18 +109,6 @@ RawResponse = Union[str, bytes]
 class FrameworkException(Exception):
     """
     The core exception for all exceptions used in the API framework.
-    """
-    pass
-
-
-class MISSING(FrameworkException):
-    """
-    .. inherits_from:: FrameworkException
-
-    Raised when something is missing.
-
-    This often serves as an alternative to a ``None`` value when that may actually
-    carry meaning.
     """
     pass
 
@@ -241,6 +232,70 @@ class SyncClientError(ClientError):
     The parent exception for any sync client-specific errors.
     """
     pass
+
+
+class SubClientError(ClientError):
+    """
+    .. inherits_from:: ClientError
+
+    The base exception for errors related to :class:`SubClients <arya_api_framework.SubClient>`.
+
+    Attributes
+    ----------
+        name: :py:class:`str`
+            The :class:`SubClient <arya_api_framework.SubClient>` that had an error.
+    """
+    name: str
+
+    def __init__(self, message: Optional[str] = None, *args: Any, name: str) -> None:
+        self.name = name
+        message = message or f'SubClient {name!r} has en error.'
+        super().__init__(message, *args)
+
+
+class SubClientAlreadyLoaded(SubClientError):
+    """
+    .. inherits_from:: SubClientError
+
+    Raised when a :class:`SubClient <arya_api_framework.SubClient>` that is being loaded has already been loaded.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'SubClient {name!r} already loaded.'
+        super().__init__(msg, name=name)
+
+
+class SubClientParentSet(SubClientAlreadyLoaded):
+    """
+    .. inherits_from:: SubClientAlreadyLoaded
+
+    Raised when a :class:`SubClient <arya_api_framework.SubClient>` that is being loaded already has a
+    :attr:`parent <arya_api_framework.SubClient.parent>` set, meaning it has been previously loaded.
+    """
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+
+class SubClientNotLoaded(SubClientError):
+    """
+    .. inherits_from:: SubClientError
+
+    Raised when a :class:`SubClient <arya_api_framework.SubClient>` that is being unloaded is not currently loaded.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'SubClient {name!r} has not been loaded.'
+        super().__init__(msg, name=name)
+
+
+class SubClientNoParent(SubClientError):
+    """
+    .. inherits_from:: SubClientError
+
+    Raised when a :class:`SubClient <arya_api_framework.SubClient>` method that requires a
+    :attr:`parent <arya_api_framework.SubClient.parent>` is called, but no parent is found.
+    """
+    def __init__(self, name: str) -> None:
+        msg = f'SubClient {name!r} has no parent that can execute this action.'
+        super().__init__(msg, name=name)
 
 
 # ======================

@@ -6,8 +6,12 @@ Description: Standalone functions created for general purpose use throughout the
 
 # Stdlib modules
 from collections import OrderedDict
+from enum import Enum
+from functools import wraps
+from json import JSONEncoder
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Mapping,
@@ -20,11 +24,14 @@ from typing import (
 from pydantic import validate_arguments
 
 # Local modules
-from .errors import ValidationError
+from . import errors
+from .constants import HTTPMethod
 from .models import BaseModel
 
 # Define exposed objects
 __all__ = [
+    "apiclient",
+    "endpoint",
     "flatten_obj",
     "flatten_params",
     "merge_dicts",
@@ -38,6 +45,16 @@ __all__ = [
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 DictOrModel = Union[HttpMapping, BaseModel]
+
+
+# ======================
+#       Classes
+# ======================
+class FrameworkEncoder(JSONEncoder):
+    def default(self, obj) -> Any:
+        if isinstance(obj, Enum):
+            return obj.name
+        return JSONEncoder.default(self, obj)
 
 
 # ======================
@@ -78,9 +95,10 @@ def validate_type(obj: Any, target: Union[Type, List[Type]], err: bool = True) -
             return True
 
     if err:
-        raise ValidationError(f"{obj} is not of type {target}.")
+        raise errors.ValidationError(f"{obj} is not of type {target}.")
 
     return False
+
 
 # =======================
 #   Argument Management
@@ -210,3 +228,125 @@ def merge_dicts(
 # ======================
 def _is_submodule(parent: str, child: str) -> bool:
     return parent == child or child.startswith(parent + '.')
+
+
+# ======================
+#      Decorators
+# ======================
+def apiclient(cls):
+    """Decorates any :class:`SyncClient <arya_api_framework.SyncClient>`,
+    :class:`AsyncClient <arya_api_framework.AsyncClient>`, or :class:`SubClient <arya_api_framework.SubClient>` to
+    automatically read any methods decorated with an :deco:`endpoint` decorator. The :meth:`tree <SyncClient.tree>`
+    method is then populated using this metadata.
+
+    .. code-block:: python
+        :caption: Example:
+
+        @apiclient
+        class MyClient(SyncClient, uri='https://example.com/api'):
+            @endpoint(
+                path='/',
+                name='Get Example',
+                href='https://example.com/api/docs/',
+                method='GET'
+            )
+            def example(self):
+                return self.get()
+
+    .. code-block:: python
+
+        >>> client = MyClient()
+        >>> print(client.tree(serialize=True, indent=2))
+        {
+          "root": {
+            "__info__": {
+              "uri": "https://example.com/api",
+              "uri_root": "https://example.com"
+            },
+            "__endpoints__": {
+              "example": {
+                "path": "/",
+                "name": "Get Example",
+                "href": "https://example.com/api/docs/",
+                "methods": [
+                  "GET"
+                ]
+              }
+            },
+            "__subclients__": {}
+          }
+        }
+    """
+
+    cls.__endpoints__ = {}
+    for name, method in cls.__dict__.items():
+        if hasattr(method, '__is_endpoint__'):
+            cls.__endpoints__[method.__name__] = {
+                "path": method.__uri_path__,
+                "name": method.__endpoint_name__ or method.__name__,
+                "href": method.__href__,
+                "methods": method.__request_methods__
+            }
+    return cls
+
+
+def endpoint(
+        path: str,
+        name: str = None,
+        href: str = None,
+        method: Union[HTTPMethod, str] = HTTPMethod.ANY,
+        methods: Optional[List[Union[HTTPMethod, str]]] = None
+) -> Callable[..., Callable[..., Any]]:
+    """Attaches metadata to a request method in a :class:`SyncClient <arya_api_framework.SyncClient>`,
+    :class:`AsyncClient <arya_api_framework.AsyncClient>`, or :class:`SubClient <arya_api_framework.SubClient>`.
+    In order for this data to be applied to the client properly, the client must be decorated with a :deco:`apiclient`
+    decorator.
+
+    Note
+    ----
+        To access the metadata attached to a method with :deco:`endpoint`, use the
+        :meth:`tree <arya_api_framework.SyncClient.tree>` method of any
+        :class:`SyncClient <arya_api_framework.SyncClient>`, :class:`AsyncClient <arya_api_framework.AsyncClient>`,
+        or :class:`SubClient <arya_api_framework.SubClient>`.
+
+    Arguments
+    ---------
+        path: :py:class:`str`
+            The relative path of the endpoint from the root URI of the client.
+        name: Optional[:py:class:`str`]
+            The name of the endpoint. If this is not provided, the function name is used.
+        href: Optional[:py:class:`str`]
+            A link to documentation for this endpoint. This will usually link to an API's documentation.
+        method: Optional[Union[:class:`constants.HTTPMethod`, :py:class:`str`]]
+            The :ref:`request method <http-requests>` that the endpoint makes use of.
+        methods: Optional[List[Union[:class:`constants.HTTPMethod`, :py:class:`str`]]]
+            The :ref:`request methods <http-requests>` that an endpoint can make use of.
+
+            Note
+            ----
+                The endpoint should include either :paramref:`method` *or* :paramref:`methods` *or* exclude them both.
+    """
+    if isinstance(methods, list):
+        methods = [HTTPMethod(meth) for meth in methods]
+    else:
+        methods = [HTTPMethod(method)]
+
+    def callback(func: Callable[..., Any]) -> Callable[..., Any]:
+        func.__is_endpoint__ = True
+        func.__uri_path__ = path
+        func.__endpoint_name__ = name
+        func.__href__ = href
+        func.__request_methods__ = methods
+
+        return func
+
+    return callback
+
+
+def _requires_parent(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if getattr(self, 'parent') is not None:
+            return func(self, *args, **kwargs)
+        raise errors.SubClientNoParent(self.name)
+    return wrapper

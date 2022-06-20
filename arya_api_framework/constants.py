@@ -7,7 +7,8 @@ Description: A list of constants representing status code responses.
 from enum import Enum
 
 __all__ = [
-    "HTTPStatus"
+    "HTTPMethod",
+    "HTTPStatus",
 ]
 
 
@@ -17,6 +18,38 @@ __all__ = [
 class ClientBranch(Enum):
     sync = "sync"
     async_ = "async"
+
+
+# ======================
+#    Request Methods
+# ======================
+class HTTPMethod(Enum):
+    """A collection of all possible HTTP :ref:`request methods <http-requests>`.
+    """
+
+    GET = 'GET', 'The :ref:`get` request method.'
+    HEAD = 'HEAD', 'The :ref:`head` request method.'
+    POST = 'POST', 'The :ref:`post` request method.'
+    PUT = 'PUT', 'The :ref:`put` request method.'
+    DELETE = 'DELETE', 'The :ref:`delete` request method.'
+    CONNECT = 'CONNECT', 'The :ref:`connect` request method.'
+    OPTIONS = 'OPTIONS', 'The :ref:`options` request method.'
+    TRACE = 'TRACE', 'The :ref:`trace` request method.'
+    PATCH = 'PATCH', 'The :ref:`patch` request method.'
+    ANY = 'ANY', 'Indicates that an endpoint accepts any :ref:`request method <http-requests>`.'
+
+    def __new__(cls, value, doc=None):
+        self = object.__new__(cls)
+        self._value_ = value
+        if doc is not None:
+            self.__doc__ = doc
+        return self
+
+    @classmethod
+    def _missing_(cls, method: str):
+        vals = [m.value for m in cls]
+        if method.upper() in vals:
+            return getattr(cls, method.upper())
 
 
 # ======================

@@ -33,7 +33,7 @@ from ..errors import (
     HTTPError,
     ResponseParseError,
 )
-from ..framework import _ClientInternal
+from ..framework import ClientInternal
 from ..models import Response
 from ..utils import (
     flatten_obj,
@@ -74,52 +74,69 @@ RequestResponse = Union[
 # ======================
 #     Async Client
 # ======================
-class AsyncClient(_ClientInternal):
+class AsyncClient(ClientInternal):
     """ The core API framework client for asynchronous API integration.
 
-    Arguments
-    ---------
-        uri: Optional[:py:class:`str`]
+    Warning
+    -------
+        All of the configuration for this class and its subclasses are done through subclass parameters. This means that
+        the ``__init__`` method can be used for any extra setup for your specific use-case. The parameters shown below
+        are for subclass parameters only.
+
+        .. code-block:: python
+            :caption: Example:
+
+            class MyClient(
+                    AsyncClient,
+                    uri="https://exampleurl.com",
+                    parameters={"arg1": "abc"}
+            ):
+                ...
+
+    Keyword Args
+    ------------
+        uri: :py:class:`str`
+            * |kwargonly|
+
             The base URI that will prepend all requests made using the client.
 
             Warning
             -------
-                This should always either be passed as an argument here or as a subclass argument. If neither are given,
-                an :class:`errors.ClientError` exception will be raised.
-
-    Keyword Args
-    ------------
+                This should always be passed. If it is not given, an :class:`errors.ClientError` exception will be
+                raised.
         headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            * |kwargonly|
+
             The default headers to pass with every request. Can be overridden by individual requests.
             Defaults to ``None``.
         cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            * |kwargonly|
+
             The default cookies to pass with every request. Can be overridden by individual requests.
             Defaults to ``None``.
         parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+            * |kwargonly|
+
             The default parameters to pass with every request. Can be overridden by individual requests.
             Defaults to ``None``.
         error_responses: Optional[:py:class:`dict`]
+            * |kwargonly|
+
             A mapping of :py:class:`int` error codes to :class:`BaseModel` types to use when that error code is
             received. Defaults to ``None`` and raises default exceptions for error codes.
-        bearer_token: Optional[:py:class:`str`, :pydantic:`pydantic.SecretStr <usage/types/#secret-types>`
+        bearer_token: Optional[Union[:py:class:`str`, :pydantic:`pydantic.SecretStr <usage/types/#secret-types>`]]
+            * |kwargonly|
+
             A ``bearer_token`` that will be sent with requests in the ``Authorization`` header. Defaults to ``None``
         rate_limit: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |kwargonly|
+
             The number of requests to allow over :paramref:`rate_limit_interval` seconds. Defaults to ``None``
         rate_limit_interval: Optional[Union[:py:class:`int`, :py:class:`float`]]
+            * |kwargonly|
+
             The period of time, in seconds, over which to apply the rate limit per every :paramref:`rate_limit`
             requests. Defaults to ``1`` second.
-
-    Tip
-    ----
-        All of the arguments that can be used when instantiating a client can also be used as subclass parameters:
-
-        .. code-block:: python
-
-            class MyClient(SyncClient, uri="https://exampleurl.com", parameters={"arg1": "abc"}):
-                pass
-
-        Then, when instantiating the client, any arguments passed directly to the class will update the
-        subclass parameters.
 
     Attributes
     ----------
@@ -132,6 +149,10 @@ class AsyncClient(_ClientInternal):
             * |readonly|
 
             A mapping of extensions by name to extension.
+        subclients: Mapping[:py:class:`str`, :class:`SubClient`]
+            * |readonly|
+
+            A mapping of sub-clients by name to sub-client.
         uri: Optional[:py:class:`str`]
             * |readonly|
 
@@ -173,8 +194,9 @@ class AsyncClient(_ClientInternal):
     # ======================
     #   Private Attributes
     # ======================
-    _branch = ClientBranch.async_
-    _limiter: Optional['AsyncLimiter'] = None
+    _branch: Optional[ClientBranch] = ClientBranch.async_
+
+    __limiter: Optional['AsyncLimiter'] = None
 
     # ======================
     #    Request Methods
@@ -183,7 +205,8 @@ class AsyncClient(_ClientInternal):
     async def request(
             self,
             method: str,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             body: Body = None,
             data: Any = None,
@@ -209,33 +232,53 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             method: :py:class:`str`
+                * |positional|
+
                 The request method to use for the request (see :ref:`http-requests`).
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to.
 
         Keyword Args
         ------------
-            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
             data: Optional[:py:class:`Any`]
+                * |kwargonly|
+
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -254,12 +297,12 @@ class AsyncClient(_ClientInternal):
         if path and not path.startswith('/'):
             path = f'/{path}'
 
-        if self._limiter:
-            if not self._limiter.has_capacity():
+        if self.__limiter:
+            if not self.__limiter.has_capacity():
                 self.logger.info("Waiting for rate limit")
-            await self._limiter.acquire()
+            await self.__limiter.acquire()
 
-        path = self.uri_path + path if self.uri_path else path
+        path = self.uri_path + path if self.uri_path and path else self.uri_path if self.uri_path else path if path else ''
         headers = flatten_obj(headers)
         cookies = flatten_obj(cookies)
         parameters = merge_dicts(self.parameters, parameters)
@@ -318,7 +361,8 @@ class AsyncClient(_ClientInternal):
     async def upload_file(
             self,
             file: str,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -342,29 +386,45 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             file: :py:class:`str`
+                * |positional|
+
                 The path to the file to upload.
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -392,7 +452,8 @@ class AsyncClient(_ClientInternal):
     async def stream_file(
             self,
             file: str,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -417,29 +478,45 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             file: :py:class:`str`
+                * |positional|
+
                 The path to the file to upload.
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -466,7 +543,8 @@ class AsyncClient(_ClientInternal):
     @validate_arguments()
     async def get(
             self,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -486,27 +564,41 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the :ref:`get` request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the :ref:`get` request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the :ref:`get` request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses. Defaults
                 to ``None``, and uses the default :attr:`error_responses` attribute. If the :attr:`error_responses`
                 is also ``None``, or a status code does not have a specified response format, the default status code
@@ -532,7 +624,8 @@ class AsyncClient(_ClientInternal):
     @validate_arguments()
     async def post(
             self,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             body: Body = None,
             data: Any = None,
@@ -554,32 +647,50 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
             data: Optional[:py:class:`Any`]
+                * |kwargonly|
+
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -607,7 +718,8 @@ class AsyncClient(_ClientInternal):
     @validate_arguments()
     async def patch(
             self,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             body: Body = None,
             data: Any = None,
@@ -629,32 +741,50 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
             data: Optional[:py:class:`Any`]
+                * |kwargonly|
+
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -682,7 +812,8 @@ class AsyncClient(_ClientInternal):
     @validate_arguments()
     async def put(
             self,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             body: Body = None,
             data: Any = None,
@@ -704,32 +835,50 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
             data: Optional[:py:class:`Any`]
+                * |kwargonly|
+
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -757,7 +906,8 @@ class AsyncClient(_ClientInternal):
     @validate_arguments()
     async def delete(
             self,
-            path: str = None,
+            path: str = '',
+            /,
             *,
             body: Body = None,
             data: Any = None,
@@ -779,32 +929,50 @@ class AsyncClient(_ClientInternal):
         Arguments
         ---------
             path: Optional[:py:class:`str`]
+                * |positional|
+
                 The path, relative to the client's :attr:`uri`, to send the request to. If this is set to ``None``,
                 the request will be sent to the client's :attr:`uri`.
 
         Keyword Args
         ------------
-            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]
+            body: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Optional data to send as a JSON structure in the body of the request. Defaults to ``None``.
             data: Optional[:py:class:`Any`]
+                * |kwargonly|
+
                 Optional data of any type to send in the body of the request, without any pre-processing. Defaults to
                 ``None``.
-            headers: Optional[:py:class:`dict`, :class:`BaseModel`]
+            headers: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific headers to send with the request. Defaults to ``None`` and uses the
                 default client :attr:`headers`.
-            cookies: Optional[:py:class:`dict`, :class:`BaseModel`]
+            cookies: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific cookies to send with the request. Defaults to ``None`` and uses the default
                 client :attr:`cookies`.
-            parameters: Optional[:py:class:`dict`, :class:`BaseModel`]
+            parameters: Optional[Union[:py:class:`dict`, :class:`BaseModel`]]
+                * |kwargonly|
+
                 Request-specific query string parameters to send with the request. Defaults to ``None`` and
                 uses the default client :attr:`parameters`.
             response_format: Optional[Type[:class:`Response`]]
+                * |kwargonly|
+
                 The model to use as the response format. This offers direct data validation and easy object-oriented
                 implementation. Defaults to ``None``, and the request will return a JSON structure.
             timeout: Optional[:py:class:`int`]
+                * |kwargonly|
+
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
             error_responses: Optional[:py:class:`dict`]
+                * |kwargonly|
+
                 A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
@@ -835,17 +1003,21 @@ class AsyncClient(_ClientInternal):
     async def close(self):
         """
         Closes the current :py:class:`aiohttp.ClientSession`, if not already closed.
+
+        Unloads any loaded extensions and :class:`SubClients <SubClient>`.
         """
         if not self._closed:
             await self._session.close()
             self._closed = True
+
+        self._teardown()
 
     # ======================
     #   Private Methods
     # ======================
     def _init_rate_limit(self) -> None:
         if self.rate_limit:
-            self._limiter = AsyncLimiter(self.rate_limit, self.rate_limit_interval)
+            self.__limiter = AsyncLimiter(self.rate_limit, self.rate_limit_interval)
             self._rate_limited = True
 
     def _update_session_headers(self) -> None:
