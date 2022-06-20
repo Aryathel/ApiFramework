@@ -1,5 +1,6 @@
 aiohttp
 aiolimiter
+enum_tools[sphinx]
 pydantic
 ratelimit
 requests
