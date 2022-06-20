@@ -259,4 +259,4 @@ TODO Features
 .. checklist::
     :check:`Rate Limits (Allow rate limit application for limited APIs.)`
     :uncheck:`Response Caching (Reduce processing times/network load.)`
-    :uncheck:`Sub-Clients (For creating API category modules.)`
+    :check:`Sub-Clients (For creating API category modules.)`
