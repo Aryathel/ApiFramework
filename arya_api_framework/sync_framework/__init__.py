@@ -5,6 +5,7 @@ Description: A RESTful API client for synchronous API applications.
 """
 
 # Stdlib modules
+from inspect import isfunction
 from json import JSONDecodeError
 import types
 from typing import (
@@ -358,6 +359,8 @@ class SyncClient(ClientInternal):
                 raise ResponseParseError(raw_response=response.text)
 
             if bool(error_response_model):
+                if isfunction(error_response_model):
+                    raise error_response_model(response_json)
                 raise error_class(parse_obj_as(error_response_model, response_json))
 
             raise error_class(response_json)

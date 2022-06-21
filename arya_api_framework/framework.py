@@ -216,8 +216,6 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
         self.cookies = self.__cookies__
         self.parameters = self.__parameters__
         self.error_responses = self.__error_responses__
-        if self.__bearer_token__:
-            self.headers['Authorization'] = f'Bearer {self.__bearer_token__}'
 
         self.logger.debug('Default request settings set.')
 
@@ -282,6 +280,17 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     def headers(self, headers: Headers) -> None:
         self.__headers__ = flatten_obj(headers) or {}
         self._update_session_headers()
+
+    @property
+    def bearer_token(self) -> Optional[str]:
+        return self.__bearer_token__
+
+    @bearer_token.setter
+    def bearer_token(self, token: str) -> None:
+        self.__bearer_token__ = token
+        if not self.headers:
+            self.headers = {}
+        self.headers['Authorization'] = f'Bearer {self.__bearer_token__}'
 
     @property
     def cookies(self) -> Optional[Cookies]:
@@ -1041,8 +1050,17 @@ class SubClient(metaclass=_SubClientMeta):
             return self.parent.qualified_path / str(self.relative_path)
 
     @property
-    def parent(self) -> Union[ClientT, 'SubClient']:
+    def parent(self) -> Optional[Union[ClientT, SubClientT]]:
         return self._parent
+
+    @property
+    def root(self) -> Optional[Union[ClientT, SubClientT]]:
+        if not self.parent:
+            return self
+        elif isinstance(self.parent, ClientInternal):
+            return self.parent
+        elif isinstance(self.parent, SubClient):
+            return self.parent.root
 
     @property
     def subclients(self) -> Mapping[str, SubClientT]:

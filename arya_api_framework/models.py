@@ -73,7 +73,7 @@ class BaseModel(PydBaseModel):
 
     These models include data validation on the attributes given to them, and allow for very
     direct control over response formats. Additionally, they allow to easily creating database-like
-    structures, and outputting the data ina variety of formats.
+    structures, and outputting the data in a variety of formats.
 
     Attributes
     ----------

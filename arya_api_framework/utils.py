@@ -277,16 +277,17 @@ def apiclient(cls):
           }
         }
     """
+    if '__endpoints__' not in cls.__dict__:
+        cls.__endpoints__ = {}
 
-    cls.__endpoints__ = {}
     for name, method in cls.__dict__.items():
-        if hasattr(method, '__is_endpoint__'):
-            cls.__endpoints__[method.__name__] = {
-                "path": method.__uri_path__,
-                "name": method.__endpoint_name__ or method.__name__,
-                "href": method.__href__,
-                "methods": method.__request_methods__
-            }
+        if hasattr(method, '__is_endpoint__') and getattr(method, '__is_endpoint__'):
+            if method.__name__ not in cls.__endpoints__:
+                cls.__endpoints__[method.__name__] = {}
+            cls.__endpoints__[method.__name__]["path"] = method.__uri_path__
+            cls.__endpoints__[method.__name__]["name"] = method.__endpoint_name__ or method.__name__
+            cls.__endpoints__[method.__name__]["href"] = method.__href__
+            cls.__endpoints__[method.__name__]["methods"] = method.__request_methods__
     return cls
 
 
