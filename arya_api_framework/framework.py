@@ -236,7 +236,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     #     Dunder Methods
     # ======================
     def __getattr__(self, item: str) -> Optional[SubClientT]:
-        return self.__subclients.get(item, None)
+        res = self.__subclients.get(item)
+        return res if res else getattr(self, item)
 
     # ======================
     #      Properties
@@ -1014,7 +1015,8 @@ class SubClient(metaclass=_SubClientMeta):
     #     Dunder Methods
     # ======================
     def __getattr__(self, item: str) -> Optional[SubClientT]:
-        return self.__subclients.get(item, None)
+        res = self.__subclients.get(item)
+        return res if res else getattr(self, item)
 
     # ======================
     #      Properties
