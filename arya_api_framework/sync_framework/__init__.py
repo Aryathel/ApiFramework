@@ -177,12 +177,16 @@ class SyncClient(ClientInternal):
             The path from the :attr:`uri_root` to the :attr:`uri` path.
         headers: Optional[:py:class:`dict`]
             The default headers that will be passed into every request, unless overridden.
+        bearer_token: Optional[:py:class:`str`]
+            The token used for the ``Authorization`` field of the :attr:`headers` attribute. Sets the ``Authorization``
+            header to ``Bearer {bearer_token}``.
         cookies: Optional[:py:class:`dict`]
             The default cookies that will be passed into every request, unless overridden.
         parameters: Optional[:py:class:`dict`]
             The default parameters that will be passed into every request, unless overridden.
         error_responses: Optional[:py:class:`dict`]
-            A mapping of :py:class:`int` error codes to the :class:`BaseModel` that should be used to represent them.
+            A mapping of :py:class:`int` error codes to either a :class:`BaseModel` that should be used to represent
+            them, or a function to be used as a handler for errors of that type.
 
             Note
             ----
