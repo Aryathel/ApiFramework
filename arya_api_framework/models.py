@@ -29,6 +29,9 @@ from pydantic import (
 )
 from pydantic.schema import default_ref_template
 
+# Local modules
+from .utils import FrameworkEncoder
+
 
 __all__ = [
     'BaseModel',
@@ -270,7 +273,7 @@ class BaseModel(PydBaseModel):
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_defaults,
             exclude_none=exclude_none,
-            encoder=encoder,
+            encoder=encoder or FrameworkEncoder,
             models_as_dict=models_as_dict,
             **dumps_kwargs
         )

@@ -5,10 +5,26 @@ Description: Standalone functions created for general purpose use throughout the
 """
 
 # Stdlib modules
-from collections import OrderedDict
+from collections import (
+    OrderedDict,
+    deque,
+)
+import datetime
+from decimal import Decimal
 from enum import Enum
 from functools import wraps
+from ipaddress import (
+    IPv4Address,
+    IPv4Interface,
+    IPv4Network,
+    IPv6Address,
+    IPv6Interface,
+    IPv6Network,
+)
 from json import JSONEncoder
+from pathlib import Path
+from re import Pattern
+from types import GeneratorType
 from typing import (
     Any,
     Callable,
@@ -19,9 +35,16 @@ from typing import (
     Type,
     Union,
 )
+from uuid import UUID
 
 # 3rd party modules
-from pydantic import validate_arguments
+from pydantic import (
+    SecretBytes,
+    SecretStr,
+    validate_arguments,
+)
+from pydantic.color import Color
+from pydantic.networks import NameEmail
 
 # Local modules
 from . import errors
@@ -30,6 +53,7 @@ from .models import BaseModel
 
 # Define exposed objects
 __all__ = [
+    "FrameworkEncoder",
     "apiclient",
     "endpoint",
     "flatten_obj",
@@ -52,9 +76,38 @@ DictOrModel = Union[HttpMapping, BaseModel]
 # ======================
 class FrameworkEncoder(JSONEncoder):
     def default(self, obj) -> Any:
-        if isinstance(obj, Enum):
-            return obj.name
+        for t, formatter in ENCODERS_BY_TYPE.items():
+            if isinstance(obj, t):
+                return formatter(obj)
         return JSONEncoder.default(self, obj)
+
+
+ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
+    bytes: lambda b: b.decode(),
+    Color: str,
+    datetime.date: lambda d: d.isoformat(),
+    datetime.datetime: lambda dt: dt.isoformat(),
+    datetime.time: lambda t: t.isoformat(),
+    datetime.timedelta: lambda td: td.total_seconds(),
+    Decimal: lambda d: int(d) if d.as_tuple().exponent >= 0 else float(d),
+    Enum: lambda e: e.name,
+    frozenset: list,
+    deque: list,
+    GeneratorType: list,
+    IPv4Address: str,
+    IPv4Interface: str,
+    IPv4Network: str,
+    IPv6Address: str,
+    IPv6Interface: str,
+    IPv6Network: str,
+    NameEmail: str,
+    Path: str,
+    Pattern: lambda o: o.pattern,
+    SecretBytes: str,
+    SecretStr: str,
+    set: list,
+    UUID: str,
+}
 
 
 # ======================
@@ -286,6 +339,7 @@ def apiclient(cls):
                 cls.__endpoints__[method.__name__] = {}
             cls.__endpoints__[method.__name__]["path"] = method.__uri_path__
             cls.__endpoints__[method.__name__]["name"] = method.__endpoint_name__ or method.__name__
+            cls.__endpoints__[method.__name__]["description"] = method.__description__ or None
             cls.__endpoints__[method.__name__]["href"] = method.__href__
             cls.__endpoints__[method.__name__]["methods"] = method.__request_methods__
     return cls
@@ -294,6 +348,7 @@ def apiclient(cls):
 def endpoint(
         path: str,
         name: str = None,
+        description: str = None,
         href: str = None,
         method: Union[HTTPMethod, str] = HTTPMethod.ANY,
         methods: Optional[List[Union[HTTPMethod, str]]] = None
@@ -336,6 +391,7 @@ def endpoint(
         func.__is_endpoint__ = True
         func.__uri_path__ = path
         func.__endpoint_name__ = name
+        func.__description__ = description
         func.__href__ = href
         func.__request_methods__ = methods
 
