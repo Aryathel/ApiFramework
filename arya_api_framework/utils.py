@@ -41,6 +41,7 @@ from uuid import UUID
 from pydantic import (
     SecretBytes,
     SecretStr,
+    BaseModel,
     validate_arguments,
 )
 from pydantic.color import Color
@@ -49,7 +50,6 @@ from pydantic.networks import NameEmail
 # Local modules
 from . import errors
 from .constants import HTTPMethod
-from .models import BaseModel
 
 # Define exposed objects
 __all__ = [
