@@ -54,6 +54,7 @@ from .models import BaseModel
 # Define exposed objects
 __all__ = [
     "FrameworkEncoder",
+    "ENCODERS_BY_TYPE",
     "apiclient",
     "endpoint",
     "flatten_obj",
@@ -69,6 +70,7 @@ __all__ = [
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
 HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 DictOrModel = Union[HttpMapping, BaseModel]
+AnyOrModel = Union[Any, BaseModel]
 
 
 # ======================
@@ -157,7 +159,7 @@ def validate_type(obj: Any, target: Union[Type, List[Type]], err: bool = True) -
 #   Argument Management
 # =======================
 @validate_arguments()
-def flatten_obj(obj: Optional[DictOrModel]) -> Dict:
+def flatten_obj(obj: Optional[AnyOrModel]) -> Dict:
     """Flattens a given object into a :py:class:`dict`.
 
     This is mainly used for arguments where a :py:class:`dict` *or* a :class:`BaseModel` can be accepted as

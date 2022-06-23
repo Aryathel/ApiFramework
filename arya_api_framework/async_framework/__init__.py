@@ -13,7 +13,7 @@ from typing import (
     Type,
     Union,
 )
-from json import JSONDecodeError
+from json import JSONDecodeError, loads, dumps
 
 # 3rd party modules
 from multidict import CIMultiDict
@@ -36,6 +36,7 @@ from ..errors import (
 from ..framework import ClientInternal
 from ..models import Response
 from ..utils import (
+    FrameworkEncoder,
     flatten_obj,
     merge_dicts,
 )
@@ -63,7 +64,7 @@ HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
 Cookies = MappingOrModel
 Headers = MappingOrModel
-Body = Union[Dict[str, Any], BaseModel]
+Body = Union[Any, BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
 RequestResponse = Union[
     Union[Response, List[Response]],
@@ -306,7 +307,8 @@ class AsyncClient(ClientInternal):
         headers = flatten_obj(headers)
         cookies = flatten_obj(cookies)
         parameters = merge_dicts(self.parameters, parameters)
-        body = flatten_obj(body)
+        if isinstance(body, BaseModel):
+            body = loads(dumps(flatten_obj(body), cls=FrameworkEncoder))
         error_responses = error_responses or self.error_responses or {}
 
         async with self._session.request(

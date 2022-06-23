@@ -6,7 +6,7 @@ Description: A RESTful API client for synchronous API applications.
 
 # Stdlib modules
 from inspect import isfunction
-from json import JSONDecodeError
+from json import JSONDecodeError, loads, dumps
 import types
 from typing import (
     Any,
@@ -37,6 +37,7 @@ from ..errors import (
 from ..framework import ClientInternal
 from ..models import Response
 from ..utils import (
+    FrameworkEncoder,
     flatten_obj,
     flatten_params,
 )
@@ -73,7 +74,7 @@ HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, BaseModel]
 Cookies = MappingOrModel
 Headers = MappingOrModel
-Body = Union[Dict[str, Any], BaseModel]
+Body = Union[Any, BaseModel]
 ErrorResponses = Dict[int, Type[BaseModel]]
 RequestResponse = Union[
     Union[Response, List[Response]],
@@ -318,7 +319,8 @@ class SyncClient(ClientInternal):
         headers = flatten_obj(headers)
         cookies = flatten_obj(cookies)
         parameters = flatten_params(parameters)
-        body = flatten_obj(body)
+        if isinstance(body, BaseModel):
+            body = loads(dumps(flatten_obj(body), cls=FrameworkEncoder))
         error_responses = error_responses or self.error_responses or {}
 
         with self._session.request(

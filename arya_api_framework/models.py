@@ -24,13 +24,14 @@ from typing import (
 # 3rd party modules
 from pydantic import (
     BaseModel as PydBaseModel,
+    Extra,
     PrivateAttr,
     Protocol,
 )
 from pydantic.schema import default_ref_template
 
 # Local modules
-from .utils import FrameworkEncoder
+from .utils import ENCODERS_BY_TYPE
 
 
 __all__ = [
@@ -273,7 +274,7 @@ class BaseModel(PydBaseModel):
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_defaults,
             exclude_none=exclude_none,
-            encoder=encoder or FrameworkEncoder,
+            encoder=encoder,
             models_as_dict=models_as_dict,
             **dumps_kwargs
         )
@@ -662,6 +663,10 @@ class BaseModel(PydBaseModel):
             else:
                 res.update({k: v})
         return res
+
+    class Config:
+        extra = Extra.forbid
+        json_encoders = ENCODERS_BY_TYPE
 
 
 # ======================

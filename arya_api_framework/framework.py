@@ -80,7 +80,7 @@ HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
 Parameters = Union[HttpMapping, 'BaseModel']
 Cookies = MappingOrModel
 Headers = MappingOrModel
-Body = Union[Dict[str, Any], 'BaseModel']
+Body = Union[Any, 'BaseModel']
 ErrorResponses = Dict[int, Type['BaseModel']]
 RequestResponse = Union[
     Union[Response, List[Response]],
