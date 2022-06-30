@@ -9,7 +9,7 @@ __project__ = "Arya's API Framework"
 __author__ = 'Aryathel'
 __license__ = 'MIT'
 __copyright__ = '2022, Aryathel'
-__version__ = '0.3.3'
+__version__ = '0.3.5'
 
 # Local modules
 from .async_framework import AsyncClient

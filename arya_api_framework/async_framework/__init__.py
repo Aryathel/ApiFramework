@@ -8,7 +8,7 @@ Description: A RESTful API client for asynchronous API applications.
 from typing import (
     Any,
     Dict,
-    List,
+    Callable,
     Optional,
     Type,
     Union,
@@ -17,9 +17,6 @@ from json import JSONDecodeError, loads, dumps
 
 # 3rd party modules
 from multidict import CIMultiDict
-from pydantic import (
-    BaseModel,
-)
 from pydantic import (
     parse_obj_as,
     validate_arguments,
@@ -34,11 +31,14 @@ from ..errors import (
     ResponseParseError,
 )
 from ..framework import ClientInternal
-from ..models import Response
+from ..models import (
+    BaseModel,
+    Response,
+)
 from ..utils import (
     FrameworkEncoder,
     flatten_obj,
-    merge_dicts,
+    flatten_params,
 )
 from .utils import chunk_file_reader
 
@@ -60,16 +60,11 @@ __all__ = [
 # ======================
 DictStrAny = Dict[str, Any]
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
-HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
-Parameters = Union[HttpMapping, BaseModel]
+Parameters = Union[BaseModel, Dict]
 Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Any, BaseModel]
-ErrorResponses = Dict[int, Type[BaseModel]]
-RequestResponse = Union[
-    Union[Response, List[Response]],
-    Union[DictStrAny, List[DictStrAny]]
-]
+ErrorResponses = Dict[int, Union[Callable[..., Any], Type[BaseModel]]]
 
 
 # ======================
@@ -216,8 +211,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -284,12 +280,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         if self.closed:
             self.logger.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
@@ -304,9 +308,15 @@ class AsyncClient(ClientInternal):
             await self.__limiter.acquire()
 
         path = self.uri_path + path if self.uri_path and path else self.uri_path if self.uri_path else path if path else ''
-        headers = flatten_obj(headers)
-        cookies = flatten_obj(cookies)
-        parameters = merge_dicts(self.parameters, parameters)
+        if isinstance(headers, BaseModel):
+            headers = flatten_obj(headers)
+        headers = loads(dumps(headers, cls=FrameworkEncoder))
+        if isinstance(cookies, BaseModel):
+            cookies = flatten_obj(cookies)
+        cookies = loads(dumps(cookies, cls=FrameworkEncoder))
+        if isinstance(parameters, BaseModel):
+            parameters = flatten_params(parameters)
+        parameters = loads(dumps(parameters, cls=FrameworkEncoder))
         if isinstance(body, BaseModel):
             body = loads(dumps(flatten_obj(body), cls=FrameworkEncoder))
         error_responses = error_responses or self.error_responses or {}
@@ -324,6 +334,8 @@ class AsyncClient(ClientInternal):
             self.logger.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
 
             if response.ok:
+                if raw:
+                    return response
                 try:
                     response_json = await response.json(content_type=None)
                 except JSONDecodeError:
@@ -371,8 +383,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -431,12 +444,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             'POST',
@@ -448,6 +469,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -462,8 +484,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -523,12 +546,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             'POST',
@@ -539,7 +570,8 @@ class AsyncClient(ClientInternal):
             data=chunk_file_reader(file),
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -553,8 +585,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -605,12 +638,20 @@ class AsyncClient(ClientInternal):
                 to ``None``, and uses the default :attr:`error_responses` attribute. If the :attr:`error_responses`
                 is also ``None``, or a status code does not have a specified response format, the default status code
                 exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             "GET",
@@ -621,6 +662,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -636,8 +678,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -697,12 +740,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             "POST",
@@ -715,6 +766,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -730,8 +782,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -791,12 +844,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             "PATCH",
@@ -809,6 +870,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -824,8 +886,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -885,12 +948,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             "PUT",
@@ -903,6 +974,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -918,8 +990,9 @@ class AsyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |coro|
         * |validated_method|
@@ -979,12 +1052,20 @@ class AsyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`aiohttp.ClientResponse` object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`aiohttp.ClientResponse` object.
         """
         return await self.request(
             "DELETE",
@@ -997,6 +1078,7 @@ class AsyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     # ======================

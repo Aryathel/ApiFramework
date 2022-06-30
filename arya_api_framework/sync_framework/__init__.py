@@ -7,20 +7,16 @@ Description: A RESTful API client for synchronous API applications.
 # Stdlib modules
 from inspect import isfunction
 from json import JSONDecodeError, loads, dumps
-import types
 from typing import (
     Any,
     Dict,
-    List,
+    Callable,
     Optional,
     Type,
     Union,
 )
 
 # 3rd party modules
-from pydantic import (
-    BaseModel,
-)
 from pydantic import (
     parse_obj_as,
     validate_arguments,
@@ -35,7 +31,10 @@ from ..errors import (
     ResponseParseError,
 )
 from ..framework import ClientInternal
-from ..models import Response
+from ..models import (
+    BaseModel,
+    Response,
+)
 from ..utils import (
     FrameworkEncoder,
     flatten_obj,
@@ -66,20 +65,13 @@ __all__ = [
 # ======================
 #        Typing
 # ======================
-Num = Union[int, float]
 DictStrAny = Dict[str, Any]
-DictStrModule = Dict[str, types.ModuleType]
 MappingOrModel = Union[Dict[str, Union[str, int]], BaseModel]
-HttpMapping = Dict[str, Union[str, int, List[Union[str, int]]]]
-Parameters = Union[HttpMapping, BaseModel]
+Parameters = Union[BaseModel, Dict]
 Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Any, BaseModel]
-ErrorResponses = Dict[int, Type[BaseModel]]
-RequestResponse = Union[
-    Union[Response, List[Response]],
-    Union[DictStrAny, List[DictStrAny]]
-]
+ErrorResponses = Dict[int, Union[Callable[..., Any], Type[BaseModel]]]
 
 
 # ======================
@@ -229,8 +221,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -300,12 +293,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         if self.closed:
@@ -316,9 +317,15 @@ class SyncClient(ClientInternal):
             path = f'/{path}'
 
         path = self.uri + path if path else self.uri
-        headers = flatten_obj(headers)
-        cookies = flatten_obj(cookies)
-        parameters = flatten_params(parameters)
+        if isinstance(headers, BaseModel):
+            headers = flatten_obj(headers)
+        headers = loads(dumps(headers, cls=FrameworkEncoder))
+        if isinstance(cookies, BaseModel):
+            cookies = flatten_obj(cookies)
+        cookies = loads(dumps(cookies, cls=FrameworkEncoder))
+        if isinstance(parameters, BaseModel):
+            parameters = flatten_params(parameters)
+        parameters = loads(dumps(parameters, cls=FrameworkEncoder))
         if isinstance(body, BaseModel):
             body = loads(dumps(flatten_obj(body), cls=FrameworkEncoder))
         error_responses = error_responses or self.error_responses or {}
@@ -334,9 +341,13 @@ class SyncClient(ClientInternal):
                 timeout=timeout,
                 files=files
         ) as response:
-            self.logger.info(f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}")
+            self.logger.info(
+                f"[{method} {response.status_code}] {path} {URL(response.request.url).query_string}"
+            )
 
             if response.ok:
+                if raw:
+                    return response
                 try:
                     response_json = response.json()
                 except JSONDecodeError:
@@ -383,8 +394,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -442,12 +454,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
         return self.request(
             'POST',
@@ -459,6 +479,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -473,8 +494,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -533,12 +555,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
         return self.request(
             'POST',
@@ -549,7 +579,8 @@ class SyncClient(ClientInternal):
             data=chunk_file_reader(file),
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -562,8 +593,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -612,12 +644,20 @@ class SyncClient(ClientInternal):
                 to ``None``, and uses the default :attr:`error_responses` attribute. If the :attr:`error_responses`
                 is also ``None``, or a status code does not have a specified response format, the default status code
                 exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         return self.request(
@@ -629,6 +669,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -644,8 +685,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -696,19 +738,20 @@ class SyncClient(ClientInternal):
 
                 The length of time, in seconds, to wait for a response to the request before raising a timeout error.
                 Defaults to ``300`` seconds, or 5 minutes.
-            error_responses: Optional[:py:class:`dict`]
+            raw: Optional[:py:class:`bool`]
                 * |kwargonly|
 
-                A mapping of :py:class:`int` status codes to :class:`BaseModel` models to use as error responses.
-                Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
-                :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
-                the default status code exceptions will be raised.
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         return self.request(
@@ -722,6 +765,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -737,8 +781,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -796,12 +841,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         return self.request(
@@ -815,6 +868,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -830,8 +884,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -887,12 +942,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         return self.request(
@@ -906,6 +969,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     @validate_arguments()
@@ -921,8 +985,9 @@ class SyncClient(ClientInternal):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[RequestResponse]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |validated_method|
         * |sync_rate_limited_method|
@@ -980,12 +1045,20 @@ class SyncClient(ClientInternal):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses` is also ``None``, or a status code does not have a specified response format,
                 the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw response object instead of parsing the results as a JSON response,
+                or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`requests.Response`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw :py:class:`requests.Response`
+                object.
         """
 
         return self.request(
@@ -999,6 +1072,7 @@ class SyncClient(ClientInternal):
             response_format=response_format,
             timeout=timeout,
             error_responses=error_responses,
+            raw=raw
         )
 
     # ======================

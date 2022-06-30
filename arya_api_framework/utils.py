@@ -92,7 +92,7 @@ ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
     datetime.time: lambda t: t.isoformat(),
     datetime.timedelta: lambda td: td.total_seconds(),
     Decimal: lambda d: int(d) if d.as_tuple().exponent >= 0 else float(d),
-    Enum: lambda e: e.name,
+    Enum: lambda e: e.value,
     frozenset: list,
     deque: list,
     GeneratorType: list,

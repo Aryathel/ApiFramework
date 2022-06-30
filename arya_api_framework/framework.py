@@ -123,9 +123,9 @@ class _ClientMeta(abc.ABCMeta):
     def __new__(mcs, *args: Any, **kwargs: Any) -> Any:
         name, bases, attrs = args
 
-        uri = kwargs.pop('uri', None)
+        uri: Union[str, URL] = kwargs.pop('uri', None)
 
-        if uri and validate_type(uri, str):
+        if uri and not isinstance(uri, URL) and validate_type(uri, str):
             uri = URL(uri.rstrip('/'))
 
         headers = kwargs.pop('headers', None)
@@ -237,7 +237,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     # ======================
     def __getattr__(self, item: str) -> Optional[SubClientT]:
         res = self.__subclients.get(item)
-        return res if res else getattr(self, item)
+        if res:
+            return res
 
     # ======================
     #      Properties
@@ -350,7 +351,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -366,7 +368,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -382,7 +385,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -397,7 +401,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -414,7 +419,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -431,7 +437,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -448,7 +455,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -465,7 +473,8 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
     ) -> Optional[RequestResponse]:
         pass
 
@@ -1016,7 +1025,8 @@ class SubClient(metaclass=_SubClientMeta):
     # ======================
     def __getattr__(self, item: str) -> Optional[SubClientT]:
         res = self.__subclients.get(item)
-        return res if res else getattr(self, item)
+        if res:
+            return res
 
     # ======================
     #      Properties
@@ -1086,8 +1096,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1155,12 +1166,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
 
         if isinstance(self.parent, ClientInternal) and self.parent.branch == ClientBranch.async_:
@@ -1174,7 +1193,8 @@ class SubClient(metaclass=_SubClientMeta):
                 parameters=parameters,
                 response_format=response_format,
                 timeout=timeout,
-                error_responses=error_responses
+                error_responses=error_responses,
+                raw=raw
             )
 
         return self.parent.request(
@@ -1188,7 +1208,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1203,8 +1224,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1259,12 +1281,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.upload_file(
             file,
@@ -1274,7 +1304,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1289,8 +1320,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1345,12 +1377,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.stream_file(
             file,
@@ -1360,7 +1400,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1373,8 +1414,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1425,12 +1467,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.get(
             str(self.relative_path / path.lstrip('/')),
@@ -1439,7 +1489,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1455,8 +1506,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1516,12 +1568,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.post(
             str(self.relative_path / path.lstrip('/')),
@@ -1532,7 +1592,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1548,8 +1609,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1609,12 +1671,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.patch(
             str(self.relative_path / path.lstrip('/')),
@@ -1625,7 +1695,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1641,8 +1712,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1702,12 +1774,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.put(
             str(self.relative_path / path.lstrip('/')),
@@ -1718,7 +1798,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     @_requires_parent
@@ -1734,8 +1815,9 @@ class SubClient(metaclass=_SubClientMeta):
             parameters: Parameters = None,
             response_format: Type[Response] = None,
             timeout: int = 300,
-            error_responses: ErrorResponses = None
-    ) -> Optional[Union[RequestResponse, Awaitable[RequestResponse]]]:
+            error_responses: ErrorResponses = None,
+            raw: Optional[bool] = False
+    ) -> Any:
         """
         * |maybecoro|
         * |validated_method|
@@ -1795,12 +1877,20 @@ class SubClient(metaclass=_SubClientMeta):
                 Defaults to ``None``, and uses the default :attr:`error_responses` attribute. If the
                 :attr:`error_responses <SyncClient.error_responses>` is also ``None``, or a status code does not have a
                 specified response format, the default status code exceptions will be raised.
+            raw: Optional[:py:class:`bool`]
+                * |kwargonly|
+
+                Whether or not to return the raw :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse`
+                object instead of parsing the results as a JSON response, or loading it to a :class:`BaseModel`.
+
+                .. versionadded:: 0.3.5
 
         Returns
         -------
-            Optional[Union[:py:class:`dict`, :class:`Response`]]
+            Optional[Union[:py:class:`dict`, :class:`Response`, :py:class:`aiohttp.ClientResponse`]]
                 The request response JSON, loaded into the :paramref:`response_format` model if provided, or as a raw
-                :py:class:`dict` otherwise.
+                :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
+                :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
         return self.parent.delete(
             str(self.relative_path / path.lstrip('/')),
@@ -1811,7 +1901,8 @@ class SubClient(metaclass=_SubClientMeta):
             parameters=parameters,
             response_format=response_format,
             timeout=timeout,
-            error_responses=error_responses
+            error_responses=error_responses,
+            raw=raw
         )
 
     # ======================
