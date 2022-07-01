@@ -320,7 +320,7 @@ class SyncClient(ClientInternal):
                 path = URL(path)
 
             if not path.is_absolute():
-                path = self.uri / path.human_repr()
+                path = self.uri / path.human_repr().lstrip('/')
         else:
             path = self.uri
         path = str(path)

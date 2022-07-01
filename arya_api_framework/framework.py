@@ -1058,16 +1058,16 @@ class SubClient(metaclass=_SubClientMeta):
     def full_relative_path(self) -> Optional[URL]:
         if not self.parent or isinstance(self.parent, ClientInternal):
             return self.relative_path
-        return self.parent.full_relative_path / self.relative_path.human_repr()
+        return self.parent.full_relative_path / self.relative_path.human_repr().lstrip('/')
 
     @property
     def qualified_path(self) -> Optional[URL]:
         if not self.parent:
             return
         if isinstance(self.parent, ClientInternal):
-            return self.parent.uri / self.relative_path.human_repr()
+            return self.parent.uri / self.relative_path.human_repr().lstrip('/')
         if self.parent.qualified_path:
-            return self.parent.qualified_path / self.relative_path.human_repr()
+            return self.parent.qualified_path / self.relative_path.human_repr().lstrip('/')
 
     @property
     def parent(self) -> Optional[Union[ClientT, SubClientT]]:
@@ -1193,7 +1193,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         if isinstance(self.parent, ClientInternal) and self.parent.branch == ClientBranch.async_:
             return self.parent.request(
@@ -1313,7 +1313,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.upload_file(
             file,
@@ -1415,7 +1415,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.stream_file(
             file,
@@ -1511,7 +1511,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.get(
             path,
@@ -1618,7 +1618,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.post(
             path,
@@ -1727,7 +1727,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.patch(
             path,
@@ -1836,7 +1836,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.put(
             path,
@@ -1945,7 +1945,7 @@ class SubClient(metaclass=_SubClientMeta):
         if isinstance(path, str):
             path = URL(path)
         if not path.is_absolute():
-            path = self.relative_path / path.human_repr()
+            path = self.relative_path / path.human_repr().lstrip('/')
 
         return self.parent.delete(
             path,
