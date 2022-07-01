@@ -306,7 +306,7 @@ class AsyncClient(ClientInternal):
                 path = URL(path.lstrip('/'))
 
             if not path.is_absolute():
-                path = self.uri / str(path)
+                path = self.uri.join(path)
         else:
             path = self.uri
 
