@@ -24,7 +24,15 @@ from yarl import URL
 from .constants import ClientBranch
 from . import errors
 from .models import Response
-from .utils import validate_type, flatten_params, flatten_obj, _is_submodule, _requires_parent, FrameworkEncoder
+from .utils import (
+    validate_type,
+    flatten_params,
+    flatten_obj,
+    _is_submodule,
+    _requires_parent,
+    FrameworkEncoder,
+    YarlURL,
+)
 
 
 is_sync: bool
@@ -82,6 +90,7 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Any, 'BaseModel']
 ErrorResponses = Dict[int, Type['BaseModel']]
+PathType = Union[str, YarlURL]
 RequestResponse = Union[
     Union[Response, List[Response]],
     Union[DictStrAny, List[DictStrAny]]
@@ -262,16 +271,16 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
 
     # URI Options
     @property
-    def uri(self) -> Optional[str]:
-        return str(self.__base_uri__) if self.__base_uri__ else None
+    def uri(self) -> Optional[URL]:
+        return self.__base_uri__
 
     @property
-    def uri_root(self) -> Optional[str]:
-        return str(self.__base_uri__.origin()) if self.__base_uri__ else None
+    def uri_root(self) -> Optional[URL]:
+        return self.uri.origin() if self.uri else None
 
     @property
-    def uri_path(self) -> Optional[str]:
-        return str(self.__base_uri__.relative()) if self.__base_uri__ else None
+    def uri_path(self) -> Optional[URL]:
+        return self.uri.relative() if self.uri else None
 
     # Default Request Settings
     @property
@@ -340,7 +349,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     def request(
             self,
             method: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -360,7 +369,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     def upload_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -377,7 +386,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     def stream_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -393,7 +402,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     @abc.abstractmethod
     def get(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -409,7 +418,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     @abc.abstractmethod
     def post(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -427,7 +436,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     @abc.abstractmethod
     def patch(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -445,7 +454,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     @abc.abstractmethod
     def put(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -463,7 +472,7 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
     @abc.abstractmethod
     def delete(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -811,7 +820,6 @@ class ClientInternal(abc.ABC, metaclass=_ClientMeta):
                 self._session.params = self.parameters
             elif self._branch == ClientBranch.async_:
                 self._session = ClientSession(
-                    self.uri_root,
                     headers=self.headers,
                     cookies=self.cookies
                 )
@@ -1085,7 +1093,7 @@ class SubClient(metaclass=_SubClientMeta):
     def request(
             self,
             method: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -1182,10 +1190,15 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
 
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         if isinstance(self.parent, ClientInternal) and self.parent.branch == ClientBranch.async_:
             return self.parent.request(
                 method,
-                str(self.relative_path / path.lstrip('/')),
+                path,
                 body=body,
                 data=data,
                 headers=headers,
@@ -1199,7 +1212,7 @@ class SubClient(metaclass=_SubClientMeta):
 
         return self.parent.request(
             method,
-            str(self.relative_path / path.lstrip('/')),
+            path,
             body=body,
             data=data,
             files=files,
@@ -1216,7 +1229,7 @@ class SubClient(metaclass=_SubClientMeta):
     def upload_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -1296,9 +1309,15 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.upload_file(
             file,
-            str(self.relative_path / path.lstrip('/')),
+            path,
             headers=headers,
             cookies=cookies,
             parameters=parameters,
@@ -1312,7 +1331,7 @@ class SubClient(metaclass=_SubClientMeta):
     def stream_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -1392,9 +1411,15 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.stream_file(
             file,
-            str(self.relative_path / path.lstrip('/')),
+            path,
             headers=headers,
             cookies=cookies,
             parameters=parameters,
@@ -1407,7 +1432,7 @@ class SubClient(metaclass=_SubClientMeta):
     @_requires_parent
     def get(
             self,
-            path: str = '',
+            path: PathType = '',
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -1482,8 +1507,14 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.get(
-            str(self.relative_path / path.lstrip('/')),
+            path,
             headers=headers,
             cookies=cookies,
             parameters=parameters,
@@ -1496,7 +1527,7 @@ class SubClient(metaclass=_SubClientMeta):
     @_requires_parent
     def post(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -1583,8 +1614,14 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.post(
-            str(self.relative_path / path.lstrip('/')),
+            path,
             body=body,
             data=data,
             headers=headers,
@@ -1599,7 +1636,7 @@ class SubClient(metaclass=_SubClientMeta):
     @_requires_parent
     def patch(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -1686,8 +1723,14 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.patch(
-            str(self.relative_path / path.lstrip('/')),
+            path,
             body=body,
             data=data,
             headers=headers,
@@ -1702,7 +1745,7 @@ class SubClient(metaclass=_SubClientMeta):
     @_requires_parent
     def put(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -1789,8 +1832,14 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.put(
-            str(self.relative_path / path.lstrip('/')),
+            path,
             body=body,
             data=data,
             headers=headers,
@@ -1805,7 +1854,7 @@ class SubClient(metaclass=_SubClientMeta):
     @_requires_parent
     def delete(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -1892,8 +1941,14 @@ class SubClient(metaclass=_SubClientMeta):
                 :py:class:`dict` otherwise. If :paramref:`raw` is ``True``, returns a raw
                 :py:class:`requests.Response` or :py:class:`aiohttp.ClientResponse` object.
         """
+
+        if isinstance(path, str):
+            path = URL(path.lstrip('/'))
+        if not path.is_absolute():
+            path = self.relative_path / str(path)
+
         return self.parent.delete(
-            str(self.relative_path / path.lstrip('/')),
+            path,
             body=body,
             data=data,
             headers=headers,

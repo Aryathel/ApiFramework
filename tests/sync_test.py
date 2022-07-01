@@ -36,6 +36,7 @@ class MySyncClient(
 
 if __name__ == "__main__":
     client = MySyncClient(api_key='mysecretkey')
+    print(client.tree(True, 2))
 
     get = client.get('/get', parameters={"testing": "param1"})
     post = client.post('/post', data=b'Testing')
@@ -50,7 +51,5 @@ if __name__ == "__main__":
     print(client.get_test())
     print(client.testing.get_test())
     print(client.testing.anotherone.get_test())
-
-    print(client.tree(True, 2))
 
     client.close()

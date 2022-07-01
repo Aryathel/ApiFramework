@@ -39,6 +39,7 @@ from ..utils import (
     FrameworkEncoder,
     flatten_obj,
     flatten_params,
+    YarlURL,
 )
 from .utils import (
     chunk_file_reader,
@@ -72,6 +73,7 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Any, BaseModel]
 ErrorResponses = Dict[int, Union[Callable[..., Any], Type[BaseModel]]]
+PathType = Union[str, YarlURL]
 
 
 # ======================
@@ -98,7 +100,7 @@ class SyncClient(ClientInternal):
 
     Keyword Args
     ------------
-        uri: :py:class:`str`
+        uri: Union[:py:class:`str`, :py:class:`yarl.URL`]
             * |kwargonly|
 
             The base URI that will prepend all requests made using the client.
@@ -156,15 +158,15 @@ class SyncClient(ClientInternal):
             * |readonly|
 
             A mapping of sub-clients by name to sub-client.
-        uri: Optional[:py:class:`str`]
+        uri: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The base URI that will prepend all requests made using the client.
-        uri_root: Optional[:py:class:`str`]
+        uri_root: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The root origin of the :attr:`uri` given to the client.
-        uri_path: Optional[:py:class:`str`]
+        uri_path: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The path from the :attr:`uri_root` to the :attr:`uri` path.
@@ -210,7 +212,7 @@ class SyncClient(ClientInternal):
     def request(
             self,
             method: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -313,10 +315,16 @@ class SyncClient(ClientInternal):
             self.logger.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
-        if path and not path.startswith('/'):
-            path = f'/{path}'
+        if path:
+            if isinstance(path, str):
+                path = URL(path.lstrip('/'))
 
-        path = self.uri + path if path else self.uri
+            if not path.is_absolute():
+                path = (self.uri / str(path))
+        else:
+            path = self.uri
+        path = str(path)
+
         if isinstance(headers, BaseModel):
             headers = flatten_obj(headers)
         headers = loads(dumps(headers, cls=FrameworkEncoder))
@@ -386,7 +394,7 @@ class SyncClient(ClientInternal):
     def upload_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -486,7 +494,7 @@ class SyncClient(ClientInternal):
     def stream_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -586,7 +594,7 @@ class SyncClient(ClientInternal):
     @validate_arguments()
     def get(
             self,
-            path: str = '',
+            path: PathType = '',
             *,
             headers: Headers = None,
             cookies: Cookies = None,
@@ -675,7 +683,7 @@ class SyncClient(ClientInternal):
     @validate_arguments()
     def post(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -771,7 +779,7 @@ class SyncClient(ClientInternal):
     @validate_arguments()
     def patch(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -874,7 +882,7 @@ class SyncClient(ClientInternal):
     @validate_arguments()
     def put(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -975,7 +983,7 @@ class SyncClient(ClientInternal):
     @validate_arguments()
     def delete(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,

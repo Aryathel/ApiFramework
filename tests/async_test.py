@@ -31,6 +31,7 @@ class MyAsyncClient(AsyncClient, uri="https://postman-echo.com", extensions=['ex
 
 async def main():
     client = MyAsyncClient(api_key='mysecretkey')
+    print(client.tree(True, 2))
 
     get = await client.get('/get', parameters={"testing": "param1"})
     post = await client.post('/post', data=b'Testing')
@@ -45,8 +46,6 @@ async def main():
     print(await client.get_test())
     print(await client.testing.get_test())
     print(await client.testing.anotherone.get_test())
-
-    print(client.tree(True, 2))
 
     await client.close()
 

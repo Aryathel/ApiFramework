@@ -39,6 +39,7 @@ from ..utils import (
     FrameworkEncoder,
     flatten_obj,
     flatten_params,
+    YarlURL,
 )
 from .utils import chunk_file_reader
 
@@ -65,6 +66,7 @@ Cookies = MappingOrModel
 Headers = MappingOrModel
 Body = Union[Any, BaseModel]
 ErrorResponses = Dict[int, Union[Callable[..., Any], Type[BaseModel]]]
+PathType = Union[str, YarlURL]
 
 
 # ======================
@@ -91,7 +93,7 @@ class AsyncClient(ClientInternal):
 
     Keyword Args
     ------------
-        uri: :py:class:`str`
+        uri: Union[:py:class:`str`, :py:class:`yarl.URL`]
             * |kwargonly|
 
             The base URI that will prepend all requests made using the client.
@@ -149,15 +151,15 @@ class AsyncClient(ClientInternal):
             * |readonly|
 
             A mapping of sub-clients by name to sub-client.
-        uri: Optional[:py:class:`str`]
+        uri: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The base URI that will prepend all requests made using the client.
-        uri_root: Optional[:py:class:`str`]
+        uri_root: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The root origin of the :attr:`uri` given to the client.
-        uri_path: Optional[:py:class:`str`]
+        uri_path: Optional[:py:class:`yarl.URL`]
             * |readonly|
 
             The path from the :attr:`uri_root` to the :attr:`uri` path.
@@ -201,7 +203,7 @@ class AsyncClient(ClientInternal):
     async def request(
             self,
             method: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -299,15 +301,20 @@ class AsyncClient(ClientInternal):
             self.logger.warning(f"The {self.__class__.__name__} session has already been closed, and no further requests will be processed.")
             return
 
-        if path and not path.startswith('/'):
-            path = f'/{path}'
+        if path:
+            if isinstance(path, str):
+                path = URL(path.lstrip('/'))
+
+            if not path.is_absolute():
+                path = self.uri / str(path)
+        else:
+            path = self.uri
 
         if self.__limiter:
             if not self.__limiter.has_capacity():
                 self.logger.info("Waiting for rate limit")
             await self.__limiter.acquire()
 
-        path = self.uri_path + path if self.uri_path and path else self.uri_path if self.uri_path else path if path else ''
         if isinstance(headers, BaseModel):
             headers = flatten_obj(headers)
         headers = loads(dumps(headers, cls=FrameworkEncoder))
@@ -317,11 +324,16 @@ class AsyncClient(ClientInternal):
         if isinstance(parameters, BaseModel):
             parameters = flatten_params(parameters)
         parameters = loads(dumps(parameters, cls=FrameworkEncoder))
+        if parameters:
+            for key, val in parameters.items():
+                if isinstance(val, bool):
+                    val = str(val).lower()
+                    parameters[key] = val
         if isinstance(body, BaseModel):
             body = loads(dumps(flatten_obj(body), cls=FrameworkEncoder))
         error_responses = error_responses or self.error_responses or {}
 
-        async with self._session.request(
+        response = await self._session.request(
                 method,
                 path,
                 headers=headers,
@@ -330,52 +342,60 @@ class AsyncClient(ClientInternal):
                 json=body,
                 data=data,
                 timeout=ClientTimeout(total=timeout)
-        ) as response:
-            self.logger.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
+        )
 
-            if response.ok:
-                if raw:
-                    return response
-                try:
-                    response_json = await response.json(content_type=None)
-                except JSONDecodeError:
-                    response_text = await response.text()
-                    raise ResponseParseError(raw_response=response_text)
+        self.logger.info(f"[{method} {response.status}] {path} {URL(response.url).query_string}")
 
-                if response_format is not None:
-                    if isinstance(response_json, list):
-                        lst = []
-                        for dt in response_json:
-                            obj = parse_obj_as(response_format, dt)
-                            obj._request_base = str(response.url)
-                            lst.append(obj)
-                        return lst
-
-                    obj = parse_obj_as(response_format, response_json)
-                    obj._request_base = str(response.url)
-                    return obj
-
-                return response_json
-
-            error_class = ERROR_RESPONSE_MAPPING.get(response.status, HTTPError)
-            error_response_model = error_responses.get(response.status)
-
+        if response.ok:
+            if raw:
+                return response
             try:
                 response_json = await response.json(content_type=None)
             except JSONDecodeError:
                 response_text = await response.text()
+                await response.release()
                 raise ResponseParseError(raw_response=response_text)
 
-            if bool(error_response_model):
-                raise error_class(parse_obj_as(error_response_model, response_json))
+            if response_format is not None:
+                if isinstance(response_json, list):
+                    lst = []
+                    for dt in response_json:
+                        obj = parse_obj_as(response_format, dt)
+                        obj._request_base = str(response.url)
+                        lst.append(obj)
+                    await response.release()
+                    return lst
 
-            raise error_class(response_json)
+                obj = parse_obj_as(response_format, response_json)
+                obj._request_base = str(response.url)
+                await response.release()
+                return obj
+
+            await response.release()
+            return response_json
+
+        error_class = ERROR_RESPONSE_MAPPING.get(response.status, HTTPError)
+        error_response_model = error_responses.get(response.status)
+
+        try:
+            response_json = await response.json(content_type=None)
+        except JSONDecodeError:
+            response_text = await response.text()
+            await response.release()
+            raise ResponseParseError(raw_response=response_text)
+
+        if bool(error_response_model):
+            await response.release()
+            raise error_class(parse_obj_as(error_response_model, response_json))
+
+        await response.release()
+        raise error_class(response_json)
 
     @validate_arguments()
     async def upload_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -476,7 +496,7 @@ class AsyncClient(ClientInternal):
     async def stream_file(
             self,
             file: str,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -577,7 +597,7 @@ class AsyncClient(ClientInternal):
     @validate_arguments()
     async def get(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             headers: Headers = None,
@@ -668,7 +688,7 @@ class AsyncClient(ClientInternal):
     @validate_arguments()
     async def post(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -772,7 +792,7 @@ class AsyncClient(ClientInternal):
     @validate_arguments()
     async def patch(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -876,7 +896,7 @@ class AsyncClient(ClientInternal):
     @validate_arguments()
     async def put(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,
@@ -980,7 +1000,7 @@ class AsyncClient(ClientInternal):
     @validate_arguments()
     async def delete(
             self,
-            path: str = '',
+            path: PathType = '',
             /,
             *,
             body: Body = None,

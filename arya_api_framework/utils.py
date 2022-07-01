@@ -46,6 +46,7 @@ from pydantic import (
 )
 from pydantic.color import Color
 from pydantic.networks import NameEmail
+from yarl import URL
 
 # Local modules
 from . import errors
@@ -61,6 +62,7 @@ __all__ = [
     "flatten_params",
     "merge_dicts",
     "validate_type",
+    "YarlURL",
 ]
 
 
@@ -109,7 +111,24 @@ ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
     SecretStr: str,
     set: list,
     UUID: str,
+    URL: str,
 }
+
+
+class YarlURL:
+    @classmethod
+    def __get_validators__(cls):
+        return [cls.validator]
+
+    @classmethod
+    def validator(cls, val: Union[str, URL]) -> URL:
+        if not isinstance(val, str) and not isinstance(val, URL):
+            raise TypeError('String or URL type parameter required.')
+
+        if isinstance(val, str):
+            return URL(val.lstrip('/'))
+
+        return val
 
 
 # ======================
