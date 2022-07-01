@@ -317,10 +317,10 @@ class SyncClient(ClientInternal):
 
         if path:
             if isinstance(path, str):
-                path = URL(path.lstrip('/'))
+                path = URL(path)
 
             if not path.is_absolute():
-                path = self.uri.join(path)
+                path = self.uri / path.human_repr()
         else:
             path = self.uri
         path = str(path)
@@ -381,9 +381,9 @@ class SyncClient(ClientInternal):
             try:
                 response_json = response.json()
             except JSONDecodeError:
-                raise ResponseParseError(raw_response=response.text)
+                response_json = None
 
-            if bool(error_response_model):
+            if bool(error_response_model) and response_json:
                 if isfunction(error_response_model):
                     raise error_response_model(response_json)
                 raise error_class(parse_obj_as(error_response_model, response_json))

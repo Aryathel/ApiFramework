@@ -338,8 +338,11 @@ class HTTPError(FrameworkException):
     status_code: int = None
     response: Response = None
 
-    def __init__(self, response: Response):
+    def __init__(self, response: Response, msg: Optional[str] = None):
         self.response = response
+
+        if msg is not None:
+            super().__init__(msg)
 
 
 class HTTPRedirect(HTTPError):
@@ -510,6 +513,9 @@ class HTTPNotFound(HTTPClientError):
     :ref:`404`
     """
     status_code = HTTPStatus.HTTP_404_NOT_FOUND
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(None, msg='That page could not be found.')
 
 
 class HTTPMethodNotAllowed(HTTPClientError):

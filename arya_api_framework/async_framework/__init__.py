@@ -5,6 +5,7 @@ Description: A RESTful API client for asynchronous API applications.
 """
 
 # Stdlib modules
+from inspect import isfunction
 from typing import (
     Any,
     Dict,
@@ -303,10 +304,10 @@ class AsyncClient(ClientInternal):
 
         if path:
             if isinstance(path, str):
-                path = URL(path.lstrip('/'))
+                path = URL(path)
 
             if not path.is_absolute():
-                path = self.uri.join(path)
+                path = self.uri / path.human_repr()
         else:
             path = self.uri
 
@@ -380,12 +381,12 @@ class AsyncClient(ClientInternal):
         try:
             response_json = await response.json(content_type=None)
         except JSONDecodeError:
-            response_text = await response.text()
-            await response.release()
-            raise ResponseParseError(raw_response=response_text)
+            response_json = None
 
-        if bool(error_response_model):
+        if bool(error_response_model) and response_json:
             await response.release()
+            if isfunction(error_response_model):
+                raise error_response_model(response_json)
             raise error_class(parse_obj_as(error_response_model, response_json))
 
         await response.release()
